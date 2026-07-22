@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="亚马逊库存分析决策台，支持 Amazon 与领星库存表格上传，聚合库存、库龄、销量、利润、广告和补货风险。" />
+  <meta name="description" content="亚马逊库存分析决策台，支持 Amazon 与领星库存表格上传，聚合库存、库龄、销量、费用和补货风险。" />
   <title>亚马逊库存决策台</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js"></script>
@@ -362,15 +362,15 @@
 
     .workspace-grid {
       display: grid;
-      grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
+      grid-template-columns: minmax(340px, 0.95fr) minmax(420px, 1.3fr);
       gap: 14px;
     }
 
     .subpanel {
       border: 1px solid var(--line);
       border-radius: 8px;
-      padding: 14px;
-      background: linear-gradient(180deg, #fff, #fbf8f1);
+      padding: 16px;
+      background: linear-gradient(180deg, #fff, #fbfaf4);
     }
 
     .subpanel h3 {
@@ -380,12 +380,12 @@
 
     .risk-bars {
       display: grid;
-      gap: 13px;
+      gap: 10px;
     }
 
     .risk-row {
       display: grid;
-      grid-template-columns: 78px minmax(120px, 1fr) 68px;
+      grid-template-columns: 86px minmax(130px, 1fr) 74px;
       gap: 10px;
       align-items: center;
       color: var(--muted);
@@ -413,7 +413,7 @@
 
     .stage-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(6, minmax(118px, 1fr));
       gap: 10px;
     }
 
@@ -422,6 +422,11 @@
       border-radius: 8px;
       padding: 12px;
       background: #fff;
+    }
+
+    .stage.is-selected {
+      border-color: rgba(37, 76, 67, 0.55);
+      background: #f3f8f5;
     }
 
     .stage b {
@@ -438,6 +443,37 @@
 
     .stage small {
       color: var(--muted);
+    }
+
+    .diagnosis-summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .diagnosis-stat {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fff;
+    }
+
+    .diagnosis-stat span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .diagnosis-stat strong {
+      display: block;
+      margin-top: 8px;
+      font-size: 22px;
+    }
+
+    .cost-panel {
+      display: grid;
+      gap: 12px;
     }
 
     .filters {
@@ -503,7 +539,7 @@
 
     table {
       width: 100%;
-      min-width: 1320px;
+      min-width: 1400px;
       border-collapse: collapse;
       background: #fff;
     }
@@ -570,7 +606,7 @@
 
     .decision-card-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(180px, 1fr));
+      grid-template-columns: repeat(5, minmax(170px, 1fr));
       gap: 10px;
     }
 
@@ -596,6 +632,21 @@
     .decision-card p {
       color: var(--muted);
       line-height: 1.45;
+    }
+
+    .decision-card footer {
+      display: grid;
+      gap: 6px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .decision-card.is-primary {
+      border-color: rgba(163, 61, 69, 0.42);
+      background: #fff8f6;
     }
 
     .execution-note {
@@ -736,6 +787,9 @@
       .kpi-grid {
         grid-template-columns: repeat(3, minmax(150px, 1fr));
       }
+      .stage-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
       .decision-card-grid {
         grid-template-columns: repeat(2, minmax(180px, 1fr));
       }
@@ -772,6 +826,7 @@
         padding-inline: 12px;
       }
       .kpi-grid,
+      .diagnosis-summary,
       .form-grid,
       .stage-grid,
       .decision-card-grid,
@@ -799,7 +854,7 @@
     <header class="topbar">
       <div class="brand">
         <span class="brand-mark">A</span>
-        <span><strong>亚马逊库存决策台</strong><span>Amazon / 领星表格 · 库存 / 利润 / 补货 / 清货</span></span>
+        <span><strong>亚马逊库存决策台</strong><span>Amazon / 领星表格 · 库存 / 库龄 / 费用 / 动作</span></span>
       </div>
       <div class="top-actions">
         <span class="pill"><i data-lucide="shield-check"></i>本地优先处理</span>
@@ -813,7 +868,7 @@
         <div class="hero-copy">
           <p class="eyebrow">Amazon Inventory Command Center</p>
           <h1>库存决策中枢</h1>
-          <p>库存、利润、库龄、广告和补货动作统一归因。</p>
+          <p>库存、库龄、费用和补货动作统一归因。</p>
           <div class="hero-meta">
             <span>补货</span>
             <span>清货</span>
@@ -830,7 +885,7 @@
           </label>
 
           <div class="form-grid">
-            <label class="field">目标库存天数
+            <label class="field">目标可售天数
               <input id="target-days" type="number" min="7" max="180" value="45" />
             </label>
             <label class="field">补货提前期
@@ -885,11 +940,12 @@
         <div class="section-body">
           <div class="workspace-grid">
             <div class="subpanel">
-              <h3>风险雷达</h3>
+              <h3>风险优先级</h3>
+              <div class="diagnosis-summary" id="diagnosis-summary"></div>
               <div class="risk-bars" id="risk-bars"></div>
             </div>
-            <div class="subpanel">
-              <h3>继续放置成本</h3>
+            <div class="subpanel cost-panel">
+              <h3>费用周期预测</h3>
               <div class="stage-grid" id="stage-grid"></div>
             </div>
           </div>
@@ -938,7 +994,7 @@
               <option value="storage">按预计仓储费</option>
               <option value="holdCost">按继续放置成本</option>
               <option value="actionFee">按执行费用</option>
-              <option value="days">按库存天数</option>
+              <option value="days">按预计可售天数</option>
               <option value="sales">按销量</option>
             </select>
             <select id="sort-direction" aria-label="排序方向">
@@ -956,7 +1012,8 @@
                   <th>站点</th>
                   <th class="num">库存</th>
                   <th class="num">30日销量</th>
-                  <th class="num">库存天数</th>
+                  <th class="num">预计可售天数</th>
+                  <th class="num">库龄</th>
                   <th class="num">180天+库存</th>
                   <th class="num">预计仓储费</th>
                   <th class="num">继续放置成本</th>
@@ -1071,7 +1128,7 @@
 
     const actionLabels = {
       replenish: "补货",
-      clearance: "广告清货",
+      clearance: "加速清货",
       liquidate: "立即清算",
       remove: "移除",
       hold: "观察"
@@ -1220,6 +1277,21 @@
       return (n * 100).toFixed(1) + "%";
     }
 
+    function formatSellableDays(value) {
+      const n = Number(value);
+      if (!Number.isFinite(n)) return "-";
+      return n > 365 ? ">365" : num(n);
+    }
+
+    function inventoryAgeLabel(row) {
+      const directAge = Number(row.inventoryAgeDays);
+      if (Number.isFinite(directAge) && directAge > 0) return `${num(directAge)}天`;
+      if (Number(row.age365) > 0) return "365天+";
+      if (Number(row.age270) > 0) return "271-365天";
+      if (Number(row.age180) > 0) return "181-270天";
+      return "0-180天";
+    }
+
     function getParams() {
       return {
         targetDays: Number(document.getElementById("target-days").value) || 45,
@@ -1248,6 +1320,7 @@
       const fbaFee = Number(row.fbaFee) || price * 0.22;
       const cost = Number(row.cost) || price * 0.3;
       const agedUnits = Math.max(0, Number(row.age180) || 0) + Math.max(0, Number(row.age270) || 0) + Math.max(0, Number(row.age365) || 0);
+      const inventoryAge = inventoryAgeLabel(row);
       const officialStorageEstimate = volume > 0 ? inventory * volume * rule.baseStorage[sizeTier][storageSeason] + agedUnits * volume * averageAgedRate(rule) : 0;
       const monthlyStorageFee = Math.max(0, Number(row.storageFee) || officialStorageEstimate || agedUnits * 0.35);
       const horizonMonths = Math.max(1, p.costHorizon / 30);
@@ -1308,7 +1381,7 @@
         perSkuHoldCost
       });
       const reason = makeReason({ action, stockoutSoon, overstock, heavyAging, highHoldingPressure, agedUnits, inventory, daysCover });
-      return { ...row, sales30, inventory, transfer, inboundQty, dailySales, daysCover, agedUnits, storageFee: estimatedStorageFee, monthlyStorageFee, longTermStorageFee, officialStorageEstimate, workingCapital, clearanceRecovery, liquidationRecovery, removalLoss, removalFee, holdingCost, perSkuHoldCost, actionUnits, actionFee, futureRemainingUnits, riskScore, risk, action, impact, reason };
+      return { ...row, sales30, inventory, transfer, inboundQty, dailySales, daysCover, inventoryAge, agedUnits, storageFee: estimatedStorageFee, monthlyStorageFee, longTermStorageFee, officialStorageEstimate, workingCapital, clearanceRecovery, liquidationRecovery, removalLoss, removalFee, holdingCost, perSkuHoldCost, actionUnits, actionFee, futureRemainingUnits, riskScore, risk, action, impact, reason };
     }
 
     function calculateActionFee(data) {
@@ -1357,10 +1430,10 @@
     }
 
     function makeReason(d) {
-      if (d.action === "replenish") return `库存仅可覆盖 ${num(d.daysCover, 0)} 天，低于补货窗口。`;
+      if (d.action === "replenish") return `预计可售 ${num(d.daysCover, 0)} 天，低于补货窗口。`;
       if (d.action === "liquidate") return `长期库存占比高，继续放置成本继续上升。`;
       if (d.action === "remove") return `长期库存和持有成本压力高，优先释放仓储。`;
-      if (d.action === "clearance") return `库存天数或库龄偏高，建议用降价与广告组合加速周转。`;
+      if (d.action === "clearance") return `预计可售天数或库龄偏高，建议加速周转。`;
       return `库存暂未触发强动作，维持观察并复核下一轮销量。`;
     }
 
@@ -1421,14 +1494,31 @@
     }
 
     function renderRisk(rows) {
+      const summary = document.getElementById("diagnosis-summary");
       if (!rows.length) {
+        summary.innerHTML = "";
         document.getElementById("risk-bars").innerHTML = `<div class="empty-panel">暂无风险诊断</div>`;
         return;
       }
       const total = Math.max(1, rows.length);
+      const highRows = rows.filter(r => r.risk === "high");
+      const urgentUnits = highRows.reduce((total, row) => total + row.inventory, 0);
+      const pressureCost = sum(rows, "perSkuHoldCost");
+      const agedRate = sum(rows, "inventory") ? sum(rows, "agedUnits") / sum(rows, "inventory") : 0;
+      summary.innerHTML = [
+        ["高风险 SKU", `${num(highRows.length)}`, `库存 ${num(urgentUnits)} 件`],
+        ["继续放置成本", money(pressureCost), `${num(getParams().costHorizon)}天口径`],
+        ["长期库存占比", pct(agedRate), `180天+ 库存`]
+      ].map(([label, value, note]) => `
+        <article class="diagnosis-stat">
+          <span>${label}</span>
+          <strong>${value}</strong>
+          <span>${note}</span>
+        </article>
+      `).join("");
       const metrics = [
         ["断货窗口", rows.filter(r => r.action === "replenish").length, "blue"],
-        ["滞销/超储", rows.filter(r => r.daysCover > getParams().targetDays * 2.4 || r.agedUnits > r.inventory * 0.32).length, "amber"],
+        ["可售偏长", rows.filter(r => r.daysCover > getParams().targetDays * 2.4 || r.agedUnits > r.inventory * 0.32).length, "amber"],
         ["高库龄", rows.filter(r => r.agedUnits > 0).length, "violet"],
         ["高持有成本", rows.filter(r => r.perSkuHoldCost > Math.max(100, r.inventory * 0.35)).length, "red"]
       ];
@@ -1446,18 +1536,24 @@
         document.getElementById("stage-grid").innerHTML = `<div class="empty-panel">暂无成本预测</div>`;
         return;
       }
-      const base = sum(rows, "storageFee");
-      const aged = sum(rows, "agedUnits");
-      const stages = [30, 60, 90, 180].map(days => {
+      const active = getParams().costHorizon;
+      const stages = [30, 60, 90, 180, 270, 365].map(days => {
         const monthFactor = days / 30;
+        const base = rows.reduce((total, row) => total + row.monthlyStorageFee * monthFactor, 0);
+        const aged = rows.reduce((total, row) => {
+          const futureRemaining = Math.max(0, row.inventory - row.dailySales * days);
+          const futureAged = Math.min(futureRemaining, Math.max(row.agedUnits, futureRemaining * (days >= 180 ? 0.5 : 0.25)));
+          return total + futureAged * estimateAgedFeePerUnit(marketplaceRules[row.marketplace] || marketplaceRules.US, days);
+        }, 0);
+        const remaining = rows.reduce((total, row) => total + Math.max(0, row.inventory - row.dailySales * days), 0);
         return {
           days,
-          cost: base * monthFactor + aged * 0.18 * monthFactor * (days > 90 ? 1.22 : 1),
-          remaining: rows.reduce((total, row) => total + Math.max(0, row.inventory - row.dailySales * days), 0)
+          cost: base + aged,
+          remaining
         };
       });
       document.getElementById("stage-grid").innerHTML = stages.map(stage => `
-        <article class="stage">
+        <article class="stage ${stage.days === active ? "is-selected" : ""}">
           <b>继续放置 ${stage.days} 天</b>
           <strong>${money(stage.cost)}</strong>
           <small>预计剩余 ${num(stage.remaining)} 件</small>
@@ -1470,17 +1566,24 @@
         document.getElementById("decision-cards").innerHTML = `<div class="empty-panel">暂无动作分组</div>`;
         return;
       }
-      const actions = ["replenish", "clearance", "liquidate", "remove", "hold"];
+      const actions = ["remove", "liquidate", "clearance", "replenish", "hold"];
       document.getElementById("decision-cards").innerHTML = actions.map(action => {
         const subset = rows.filter(row => row.action === action);
         const impact = sum(subset, "impact");
         const units = sum(subset, "inventory");
+        const actionFee = sum(subset, "actionFee");
+        const agedUnits = sum(subset, "agedUnits");
+        const topRow = subset.slice().sort((a, b) => b.riskScore - a.riskScore || Math.abs(b.impact) - Math.abs(a.impact))[0];
         return `
-          <article class="decision-card">
+          <article class="decision-card ${topRow && topRow.risk === "high" ? "is-primary" : ""}">
             <b><span class="badge ${actionTone[action]}">${actionLabels[action]}</span></b>
             <strong>${num(subset.length)} SKU</strong>
-            <small>涉及库存 ${num(units)} 件</small>
-            <p>预计金额影响 ${money(impact)}</p>
+            <small>库存 ${num(units)} 件 · 长期 ${num(agedUnits)} 件</small>
+            <p>金额影响 ${money(impact)}</p>
+            <footer>
+              <span>执行费用 ${money(actionFee)}</span>
+              <span>优先 SKU ${topRow ? escapeHtml(topRow.sku) : "-"}</span>
+            </footer>
           </article>
         `;
       }).join("");
@@ -1507,7 +1610,7 @@
       const end = rows.length ? start + pageRows.length : 0;
       document.getElementById("table-count").textContent = rows.length ? `${num(start + 1)}-${num(end)} / ${num(rows.length)} 个 SKU` : `0 个 SKU`;
       if (!rows.length) {
-        body.innerHTML = `<tr><td colspan="14"><div class="empty"><strong>等待库存表格</strong><small>上传 Amazon 库存/库龄/仓储费报告，或领星库存导出表后生成 SKU 级成本和动作费用。</small></div></td></tr>`;
+        body.innerHTML = `<tr><td colspan="15"><div class="empty"><strong>等待库存表格</strong><small>上传 Amazon 库存/库龄/仓储费报告，或领星库存导出表后生成 SKU 级成本和动作费用。</small></div></td></tr>`;
         renderPagination(0, 1);
         return;
       }
@@ -1517,7 +1620,8 @@
           <td>${escapeHtml(row.marketplace)}</td>
           <td class="num">${num(row.inventory)}</td>
           <td class="num">${num(row.sales30)}</td>
-          <td class="num">${row.daysCover > 365 ? ">365" : num(row.daysCover)}</td>
+          <td class="num">${formatSellableDays(row.daysCover)}</td>
+          <td class="num">${escapeHtml(row.inventoryAge)}</td>
           <td class="num">${num(row.agedUnits)}</td>
           <td class="num">${money(row.storageFee)}</td>
           <td class="num">${money(row.perSkuHoldCost)}</td>
@@ -1642,6 +1746,11 @@
         }
         return "";
       };
+      const inventoryAgeDays = toNumber(pick(
+        "inventoryAgeDays", "inventory-age-days", "age-days", "库龄", "库龄天数", "平均库龄", "库存年龄",
+        "estimated-storage-age", "estimated-storage-age-days", "fba-inventory-age", "fba-inventory-age-days",
+        "inv_age", "inventory_age", "age_of_inventory"
+      ));
       const age181 = toNumber(pick("age180", "181-210", "inv_age_181_to_270_days", "库龄181-270天", "181-270天", "180天+库存"));
       const age211 = toNumber(pick("211-240"));
       const age241 = toNumber(pick("241-270"));
@@ -1675,6 +1784,7 @@
         weight: toNumber(pick("weight", "商品重量", "重量", "package-weight")),
         sizeTier: String(pick("sizeTier", "product-size-tier", "尺寸分段") || "standard").toLowerCase().includes("over") ? "oversize" : "standard",
         referralRate: parseRate(pick("referralRate", "referral-rate", "佣金比例")) || 0.15,
+        inventoryAgeDays,
         age180: age181 + age211 + age241,
         age270: age271 + age301 + age331,
         age365,
@@ -1810,7 +1920,7 @@
     }
 
     function downloadCsv(filename, rows) {
-      const headers = ["sku", "asin", "product", "marketplace", "inventory", "sales30", "daysCover", "agedUnits", "storageFee", "longTermStorageFee", "perSkuHoldCost", "actionFee", "removalFee", "impact", "risk", "action", "reason"];
+      const headers = ["sku", "asin", "product", "marketplace", "inventory", "sales30", "daysCover", "inventoryAge", "inventoryAgeDays", "agedUnits", "storageFee", "longTermStorageFee", "perSkuHoldCost", "actionFee", "removalFee", "impact", "risk", "action", "reason"];
       const lines = [headers.join(",")].concat(rows.map(row => headers.map(key => {
         const value = key === "action" ? actionLabels[row.action] : key === "risk" ? ({ high: "高风险", medium: "中风险", low: "低风险" }[row.risk]) : row[key];
         return `"${String(value ?? "").replace(/"/g, '""')}"`;
@@ -1825,7 +1935,7 @@
     }
 
     function downloadTemplate() {
-      const headers = ["sku", "asin", "product", "marketplace", "inventory", "transfer", "sales30", "price", "cost", "fbaFee", "referralRate", "age180", "age270", "age365", "storageFee", "volume", "sizeTier", "weight", "inboundQty", "inboundDays"];
+      const headers = ["sku", "asin", "product", "marketplace", "inventory", "transfer", "sales30", "inventoryAgeDays", "age180", "age270", "age365", "price", "cost", "fbaFee", "referralRate", "storageFee", "volume", "sizeTier", "weight", "inboundQty", "inboundDays"];
       const blob = new Blob(["\ufeff" + headers.join(",") + "\r\n"], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
