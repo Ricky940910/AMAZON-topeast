@@ -28,6 +28,7 @@ import {
   type WeightUnit,
 } from "./lib/fba";
 import PackingAssistant from "./PackingAssistant";
+import InventoryCostSimulator from "./InventoryCostSimulator";
 
 const DEFAULT_INPUT: FbaInput = {
   length: 32,
@@ -65,7 +66,7 @@ function positiveNumber(value: string): number {
 }
 
 function App() {
-  const [activeModule, setActiveModule] = useState<"fba" | "packing">("packing");
+  const [activeModule, setActiveModule] = useState<"fba" | "packing" | "inventory">("inventory");
   const [input, setInput] = useState(DEFAULT_INPUT);
   const [copied, setCopied] = useState(false);
   const result = useMemo(() => calculateFba(input), [input]);
@@ -126,9 +127,10 @@ function App() {
             <span><b>发货装箱助手</b><small>平均装箱与 Shipment</small></span>
             <ChevronRight size={16} />
           </button>
-          <button className="nav-item" type="button" disabled>
+          <button className={`nav-item ${activeModule === "inventory" ? "active" : ""}`} type="button" onClick={() => setActiveModule("inventory")}>
             <Warehouse size={18} />
-            <span><b>仓储与移除</b><small>筹备中</small></span>
+            <span><b>库存成本推演</b><small>仓储、移除与清货</small></span>
+            <ChevronRight size={16} />
           </button>
           <button className="nav-item" type="button" disabled>
             <CircleDollarSign size={18} />
@@ -333,7 +335,7 @@ function App() {
             </footer>
           </section>
         </div>
-      </main> : <PackingAssistant />}
+      </main> : activeModule === "packing" ? <PackingAssistant /> : <InventoryCostSimulator />}
     </div>
   );
 }
