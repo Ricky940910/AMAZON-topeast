@@ -27,6 +27,7 @@ import {
   type ProductType,
   type WeightUnit,
 } from "./lib/fba";
+import PackingAssistant from "./PackingAssistant";
 
 const DEFAULT_INPUT: FbaInput = {
   length: 32,
@@ -64,6 +65,7 @@ function positiveNumber(value: string): number {
 }
 
 function App() {
+  const [activeModule, setActiveModule] = useState<"fba" | "packing">("packing");
   const [input, setInput] = useState(DEFAULT_INPUT);
   const [copied, setCopied] = useState(false);
   const result = useMemo(() => calculateFba(input), [input]);
@@ -114,14 +116,15 @@ function App() {
 
         <nav className="module-nav" aria-label="工具板块">
           <span className="nav-label">工具板块</span>
-          <button className="nav-item active" type="button">
+          <button className={`nav-item ${activeModule === "fba" ? "active" : ""}`} type="button" onClick={() => setActiveModule("fba")}>
             <Calculator size={18} />
             <span><b>FBA 费用测算</b><small>基础测算引擎</small></span>
             <ChevronRight size={16} />
           </button>
-          <button className="nav-item" type="button" disabled>
+          <button className={`nav-item ${activeModule === "packing" ? "active" : ""}`} type="button" onClick={() => setActiveModule("packing")}>
             <Box size={18} />
-            <span><b>平均装箱</b><small>筹备中</small></span>
+            <span><b>发货装箱助手</b><small>平均装箱与 Shipment</small></span>
+            <ChevronRight size={16} />
           </button>
           <button className="nav-item" type="button" disabled>
             <Warehouse size={18} />
@@ -139,7 +142,7 @@ function App() {
         </div>
       </aside>
 
-      <main className="main-content">
+      {activeModule === "fba" ? <main className="main-content">
         <header className="topbar">
           <div>
             <div className="eyebrow">板块一 · FOUNDATION COST ENGINE</div>
@@ -330,7 +333,7 @@ function App() {
             </footer>
           </section>
         </div>
-      </main>
+      </main> : <PackingAssistant />}
     </div>
   );
 }
