@@ -1,0 +1,407 @@
+import { useMemo, useState } from "react";
+import {
+  Activity,
+  AlertTriangle,
+  BadgeDollarSign,
+  BarChart3,
+  Check,
+  Copy,
+  Download,
+  FileSpreadsheet,
+  Gauge,
+  Info,
+  Megaphone,
+  Package,
+  Percent,
+  Printer,
+  ReceiptText,
+  RotateCcw,
+  ShieldCheck,
+  ShoppingCart,
+  Sparkles,
+  Target,
+  TrendingUp,
+  WalletCards,
+  Zap,
+} from "lucide-react";
+import {
+  calculateProfit,
+  calculateScenarios,
+  type ProductLifecycle,
+  type ProfitGrade,
+  type ProfitInput,
+  type SalesSite,
+} from "./lib/profit";
+
+type ProfitTab = "product" | "cost" | "ads" | "promotion" | "simulation" | "dashboard";
+
+const DEFAULT_INPUT: ProfitInput = {
+  productName: "示例新品",
+  asinSku: "SKU-PROFIT-001",
+  category: "Home & Kitchen",
+  salesSite: "US",
+  currency: "USD",
+  lifecycle: "new",
+  listingPrice: 29.99,
+  targetMonthlyOrders: 900,
+  monthlyGrowthRate: 0.08,
+  couponRate: 0.10,
+  couponOrderShare: 0.25,
+  dealRate: 0.15,
+  dealOrderShare: 0.10,
+  adOrderShare: 0.45,
+  adSalesShare: 0.48,
+  acos: 0.28,
+  targetTacos: 0.15,
+  cpc: 1.10,
+  adBudget: 4000,
+  purchaseCost: 5.20,
+  packagingCost: 0.45,
+  accessoryCost: 0.30,
+  domesticShippingCost: 0.35,
+  otherProductCost: 0.20,
+  firstMileCost: 1.10,
+  lastMileCost: 0,
+  referralFee: 4.50,
+  fbaFee: 4.85,
+  storageFee: 0.18,
+  otherAmazonFee: 0.12,
+  returnRate: 0.06,
+  unsellableRate: 0.35,
+  returnProcessingCost: 0.60,
+};
+
+const GRADE_LABELS: Record<ProfitGrade, string> = {
+  S: "S 级",
+  A: "A 级",
+  B: "B 级",
+  watch: "观察级",
+  eliminate: "淘汰",
+};
+
+const SITE_LABELS: Record<SalesSite, string> = {
+  US: "美国站",
+  CA: "加拿大站",
+  UK: "英国站",
+  DE: "德国站",
+  JP: "日本站",
+};
+
+function positive(value: string): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+}
+
+function money(value: number): string {
+  if (!Number.isFinite(value)) return "—";
+  return value.toFixed(2);
+}
+
+function number(value: number, digits = 1): string {
+  if (!Number.isFinite(value)) return "—";
+  return value.toFixed(digits);
+}
+
+function percent(value: number, digits = 1): string {
+  if (!Number.isFinite(value)) return "—";
+  return `${(value * 100).toFixed(digits)}%`;
+}
+
+async function writeClipboard(text: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    textarea.remove();
+  }
+}
+
+function buildSummaryRows(input: ProfitInput, result: ReturnType<typeof calculateProfit>) {
+  return [
+    { 分区: "产品", 指标: "产品名称", 数值: input.productName },
+    { 分区: "产品", 指标: "ASIN/SKU", 数值: input.asinSku },
+    { 分区: "产品", 指标: "站点", 数值: SITE_LABELS[input.salesSite] },
+    { 分区: "销售", 指标: "Listing 售价", 数值: money(input.listingPrice) },
+    { 分区: "销售", 指标: "月订单数量", 数值: result.monthlyOrders },
+    { 分区: "销售", 指标: "实际成交均价", 数值: money(result.averageSellingPrice) },
+    { 分区: "销售", 指标: "月销售额", 数值: money(result.netSalesRevenue) },
+    { 分区: "成本", 指标: "单件产品成本", 数值: money(result.productCostPerUnit) },
+    { 分区: "成本", 指标: "单件物流成本", 数值: money(result.logisticsCostPerUnit) },
+    { 分区: "成本", 指标: "单件 Amazon 费用", 数值: money(result.amazonFeePerUnit) },
+    { 分区: "成本", 指标: "单件退货损耗", 数值: money(result.returnLossPerUnit) },
+    { 分区: "广告", 指标: "广告订单", 数值: number(result.adOrders) },
+    { 分区: "广告", 指标: "广告销售额", 数值: money(result.adSalesRevenue) },
+    { 分区: "广告", 指标: "广告花费", 数值: money(result.adSpend) },
+    { 分区: "广告", 指标: "ACOS", 数值: percent(result.actualAcos) },
+    { 分区: "广告", 指标: "TACOS", 数值: percent(result.actualTacos) },
+    { 分区: "利润", 指标: "单件净利润", 数值: money(result.unitProfit) },
+    { 分区: "利润", 指标: "利润率", 数值: percent(result.profitMargin) },
+    { 分区: "利润", 指标: "毛利率", 数值: percent(result.grossMargin) },
+    { 分区: "利润", 指标: "月利润", 数值: money(result.netProfit) },
+    { 分区: "安全线", 指标: "盈亏平衡售价", 数值: money(result.breakEvenPrice) },
+    { 分区: "安全线", 指标: "盈亏平衡 ACOS", 数值: percent(result.breakEvenAcos) },
+    { 分区: "安全线", 指标: "最大可接受广告花费", 数值: money(result.maxAffordableAdSpend) },
+    { 分区: "决策", 指标: "SKU 等级", 数值: result.gradeTitle },
+    { 分区: "决策", 指标: "运营建议", 数值: result.recommendation },
+  ];
+}
+
+async function exportProfitWorkbook(input: ProfitInput): Promise<void> {
+  const XLSX = await import("xlsx");
+  const result = calculateProfit(input);
+  const scenarios = calculateScenarios(input);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(buildSummaryRows(input, result)), "利润汇总");
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(scenarios.map((scenario) => ({
+    情景: scenario.label,
+    月订单: scenario.result.monthlyOrders,
+    成交均价: money(scenario.result.averageSellingPrice),
+    销售额: money(scenario.result.netSalesRevenue),
+    广告花费: money(scenario.result.adSpend),
+    单件利润: money(scenario.result.unitProfit),
+    利润率: percent(scenario.result.profitMargin),
+    月利润: money(scenario.result.netProfit),
+    SKU等级: scenario.result.gradeTitle,
+  }))), "情景模拟");
+  XLSX.writeFile(workbook, "Amazon_Profit_Simulator.xlsx");
+}
+
+async function exportProfitCsv(input: ProfitInput): Promise<void> {
+  const XLSX = await import("xlsx");
+  const worksheet = XLSX.utils.json_to_sheet(buildSummaryRows(input, calculateProfit(input)));
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Profit");
+  XLSX.writeFile(workbook, "Amazon_Profit_Simulator.csv", { bookType: "csv" });
+}
+
+function ProfitSimulator() {
+  const [tab, setTab] = useState<ProfitTab>("dashboard");
+  const [input, setInput] = useState(DEFAULT_INPUT);
+  const [copied, setCopied] = useState(false);
+  const result = useMemo(() => calculateProfit(input), [input]);
+  const scenarios = useMemo(() => calculateScenarios(input), [input]);
+  const maxScenarioProfit = Math.max(1, ...scenarios.map((scenario) => Math.abs(scenario.result.netProfit)));
+
+  const update = <K extends keyof ProfitInput>(key: K, value: ProfitInput[K]) => {
+    setInput((current) => ({ ...current, [key]: value }));
+  };
+
+  const updatePercent = (key: keyof ProfitInput, value: string) => {
+    update(key, Math.min(1, positive(value) / 100) as never);
+  };
+
+  const copySummary = async () => {
+    await writeClipboard([
+      "【亚马逊利润测算】",
+      `产品：${input.productName}`,
+      `ASIN/SKU：${input.asinSku}`,
+      `月销售额：$${money(result.netSalesRevenue)}`,
+      `月订单：${result.monthlyOrders}`,
+      `单件净利润：$${money(result.unitProfit)}`,
+      `利润率：${percent(result.profitMargin)}`,
+      `月利润：$${money(result.netProfit)}`,
+      `广告花费：$${money(result.adSpend)}`,
+      `ACOS：${percent(result.actualAcos)}`,
+      `TACOS：${percent(result.actualTacos)}`,
+      `盈亏平衡售价：$${money(result.breakEvenPrice)}`,
+      `盈亏平衡 ACOS：${percent(result.breakEvenAcos)}`,
+      `SKU 等级：${result.gradeTitle}`,
+      `建议：${result.recommendation}`,
+    ].join("\n"));
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1600);
+  };
+
+  const numberField = (label: string, key: keyof ProfitInput, options?: { prefix?: string; suffix?: string; step?: number }) => (
+    <label className="profit-field">
+      <span>{label}</span>
+      <div className="profit-input-wrap">
+        {options?.prefix && <b>{options.prefix}</b>}
+        <input type="number" min="0" step={options?.step ?? 0.01} value={input[key] as number} onChange={(event) => update(key, positive(event.target.value) as never)} />
+        {options?.suffix && <em>{options.suffix}</em>}
+      </div>
+    </label>
+  );
+
+  const percentField = (label: string, key: keyof ProfitInput) => (
+    <label className="profit-field">
+      <span>{label}</span>
+      <div className="profit-input-wrap suffix"><input type="number" min="0" max="100" step="0.1" value={number((input[key] as number) * 100, 1)} onChange={(event) => updatePercent(key, event.target.value)} /><em>%</em></div>
+    </label>
+  );
+
+  return (
+    <main className="main-content profit-main">
+      <header className="topbar profit-topbar">
+        <div>
+          <div className="eyebrow">板块四 · OPERATIONS PROFIT SIMULATOR</div>
+          <h1>亚马逊利润测算器</h1>
+          <p>新品立项、老品复盘、广告安全线与 SKU 运营决策</p>
+        </div>
+        <div className="profit-top-actions">
+          <button className="rule-link" type="button" onClick={() => window.print()}><Printer size={15} /> 打印</button>
+          <button className="rule-link" type="button" onClick={() => exportProfitWorkbook(input)}><FileSpreadsheet size={15} /> 导出 Excel</button>
+        </div>
+      </header>
+
+      <div className="profit-page">
+        <div className="profit-tabs" role="tablist" aria-label="利润测算视图">
+          <button className={tab === "product" ? "active" : ""} type="button" onClick={() => setTab("product")}><Package size={15} /> 产品输入</button>
+          <button className={tab === "cost" ? "active" : ""} type="button" onClick={() => setTab("cost")}><ReceiptText size={15} /> 成本模型</button>
+          <button className={tab === "ads" ? "active" : ""} type="button" onClick={() => setTab("ads")}><Megaphone size={15} /> 广告模型</button>
+          <button className={tab === "promotion" ? "active" : ""} type="button" onClick={() => setTab("promotion")}><Percent size={15} /> 促销模型</button>
+          <button className={tab === "simulation" ? "active" : ""} type="button" onClick={() => setTab("simulation")}><Activity size={15} /> 利润模拟</button>
+          <button className={tab === "dashboard" ? "active" : ""} type="button" onClick={() => setTab("dashboard")}><BarChart3 size={15} /> 利润驾驶舱</button>
+        </div>
+
+        <section className={`profit-kpi-hero grade-${result.grade}`}>
+          <div className="profit-primary-kpi">
+            <span>预计月利润</span>
+            <strong><sup>$</sup>{money(result.netProfit)}</strong>
+            <p>{input.productName || "未命名产品"} · {SITE_LABELS[input.salesSite]} · {result.monthlyOrders} 单/月</p>
+          </div>
+          <div className="profit-kpi-grid">
+            <div><small>单件净利润</small><b className={result.unitProfit >= 0 ? "positive" : "negative"}>${money(result.unitProfit)}</b></div>
+            <div><small>利润率</small><b>{percent(result.profitMargin)}</b></div>
+            <div><small>预计 TACOS</small><b>{percent(result.actualTacos)}</b></div>
+            <div><small>盈亏平衡 ACOS</small><b>{percent(result.breakEvenAcos)}</b></div>
+          </div>
+          <div className="profit-grade-block">
+            <small>运营评级</small><strong>{GRADE_LABELS[result.grade]}</strong><span>{result.recommendation}</span>
+          </div>
+          <div className="profit-hero-actions">
+            <button type="button" onClick={() => setInput(DEFAULT_INPUT)} title="恢复示例数据"><RotateCcw size={15} /></button>
+            <button type="button" onClick={copySummary}>{copied ? <Check size={15} /> : <Copy size={15} />}{copied ? "已复制" : "复制"}</button>
+            <button type="button" onClick={() => exportProfitCsv(input)}><Download size={15} /> CSV</button>
+          </div>
+        </section>
+
+        {tab === "product" && <div className="profit-workspace two-panel">
+          <section className="profit-panel">
+            <div className="profit-panel-heading"><Package size={18} /><div><h2>产品基础信息</h2><p>定义站点、生命周期、售价和目标销量</p></div></div>
+            <div className="profit-form-grid">
+              <label className="profit-field"><span>产品名称</span><input value={input.productName} onChange={(event) => update("productName", event.target.value)} /></label>
+              <label className="profit-field"><span>ASIN / SKU</span><input value={input.asinSku} onChange={(event) => update("asinSku", event.target.value)} /></label>
+              <label className="profit-field"><span>产品类目</span><input value={input.category} onChange={(event) => update("category", event.target.value)} /></label>
+              <label className="profit-field"><span>销售站点</span><select value={input.salesSite} onChange={(event) => update("salesSite", event.target.value as SalesSite)}>{Object.entries(SITE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+              {numberField("Listing 售价", "listingPrice", { prefix: "$" })}
+              {numberField("目标月销量", "targetMonthlyOrders", { suffix: "件", step: 1 })}
+              {percentField("预计月增长率", "monthlyGrowthRate")}
+              <label className="profit-field"><span>销售币种</span><input value="USD" disabled /></label>
+            </div>
+            <div className="lifecycle-control"><span>产品生命周期</span><div><button className={input.lifecycle === "new" ? "active" : ""} type="button" onClick={() => update("lifecycle", "new" as ProductLifecycle)}>新品</button><button className={input.lifecycle === "mature" ? "active" : ""} type="button" onClick={() => update("lifecycle", "mature" as ProductLifecycle)}>成熟品</button></div></div>
+          </section>
+
+          <section className="profit-panel">
+            <div className="profit-panel-heading"><ShoppingCart size={18} /><div><h2>订单结构模型</h2><p>广告/自然与促销订单是两个独立维度</p></div></div>
+            <div className="order-structure-visual">
+              <div className="order-donut" style={{ "--ad-share": `${result.adOrders / Math.max(1, result.monthlyOrders) * 360}deg` } as React.CSSProperties}><span><b>{result.monthlyOrders}</b><small>月订单</small></span></div>
+              <div className="order-legend"><div><i className="ad" /><span>广告订单</span><b>{number(result.adOrders, 0)} / {percent(input.adOrderShare)}</b></div><div><i className="natural" /><span>自然订单</span><b>{number(result.naturalOrders, 0)} / {percent(1 - input.adOrderShare)}</b></div></div>
+            </div>
+            <div className="profit-metric-grid three">
+              <div><small>日均订单</small><strong>{number(result.dailyOrders)} 单</strong></div>
+              <div><small>Coupon 订单</small><strong>{number(result.couponOrders, 0)} 单</strong></div>
+              <div><small>Deal 订单</small><strong>{number(result.dealOrders, 0)} 单</strong></div>
+              <div><small>广告销售额</small><strong>${money(result.adSalesRevenue)}</strong></div>
+              <div><small>自然销售额</small><strong>${money(result.naturalSalesRevenue)}</strong></div>
+              <div><small>自然贡献利润</small><strong>${money(result.naturalContributionProfit)}</strong></div>
+              <div><small>折扣订单销售额</small><strong>${money(result.discountSalesRevenue)}</strong></div>
+            </div>
+          </section>
+        </div>}
+
+        {tab === "cost" && <div className="profit-workspace cost-workspace">
+          <section className="profit-panel">
+            <div className="profit-panel-heading"><Package size={18} /><div><h2>产品成本</h2><p>采购、包装、配件与国内段成本</p></div></div>
+            <div className="profit-form-grid">{numberField("采购成本", "purchaseCost", { prefix: "$" })}{numberField("包装成本", "packagingCost", { prefix: "$" })}{numberField("配件成本", "accessoryCost", { prefix: "$" })}{numberField("国内运输", "domesticShippingCost", { prefix: "$" })}{numberField("其他成本", "otherProductCost", { prefix: "$" })}</div>
+            <div className="panel-total"><span>单件产品总成本</span><strong>${money(result.productCostPerUnit)}</strong></div>
+          </section>
+          <section className="profit-panel">
+            <div className="profit-panel-heading"><WalletCards size={18} /><div><h2>物流与 Amazon 费用</h2><p>FBA 费用采用上游测算结果输入</p></div></div>
+            <div className="profit-form-grid">{numberField("头程成本/件", "firstMileCost", { prefix: "$" })}{numberField("尾程成本/件", "lastMileCost", { prefix: "$" })}{numberField("Referral Fee", "referralFee", { prefix: "$" })}{numberField("FBA 配送费", "fbaFee", { prefix: "$" })}{numberField("仓储费/件", "storageFee", { prefix: "$" })}{numberField("其他 Amazon 费", "otherAmazonFee", { prefix: "$" })}</div>
+            <div className="double-total"><div><span>物流成本/件</span><b>${money(result.logisticsCostPerUnit)}</b></div><div><span>Amazon 费用/件</span><b>${money(result.amazonFeePerUnit)}</b></div></div>
+          </section>
+          <section className="profit-panel return-panel">
+            <div className="profit-panel-heading"><ReceiptText size={18} /><div><h2>退货损耗模型</h2><p>不可售货值损失 + 每笔退货处理成本</p></div></div>
+            <div className="profit-form-grid">{percentField("退货率", "returnRate")}{percentField("不可二次销售比例", "unsellableRate")}{numberField("退货处理成本", "returnProcessingCost", { prefix: "$" })}</div>
+            <div className="return-result-grid"><div><small>预计退货数量</small><b>{number(result.returnQuantity)} 件</b></div><div><small>不可售数量</small><b>{number(result.unsellableQuantity)} 件</b></div><div><small>月退货损失</small><b>${money(result.returnLoss)}</b></div><div><small>单件摊销</small><b>${money(result.returnLossPerUnit)}</b></div></div>
+          </section>
+        </div>}
+
+        {tab === "ads" && <div className="profit-workspace two-panel">
+          <section className="profit-panel">
+            <div className="profit-panel-heading"><Megaphone size={18} /><div><h2>广告成本参数</h2><p>按广告销售额与 ACOS 推导所需花费</p></div></div>
+            <div className="profit-form-grid">{percentField("广告订单占比", "adOrderShare")}{percentField("广告销售占比", "adSalesShare")}{percentField("ACOS", "acos")}{percentField("TACOS 目标", "targetTacos")}{numberField("平均 CPC", "cpc", { prefix: "$" })}{numberField("月广告预算", "adBudget", { prefix: "$" })}</div>
+            <p className="profit-note"><Info size={14} /> 广告预算是约束线，不直接替代广告花费；预计花费 = 广告销售额 × ACOS。</p>
+          </section>
+          <section className="profit-panel ad-output-panel">
+            <div className="profit-panel-heading"><Gauge size={18} /><div><h2>广告效率输出</h2><p>订单、销售、成本和预算覆盖能力</p></div></div>
+            <div className="ad-main-amount"><span>预计广告花费</span><strong>${money(result.adSpend)}</strong><small>预算 ${result.budgetGap >= 0 ? "富余" : "缺口"} ${result.budgetGap >= 0 ? "+" : ""}${money(result.budgetGap)}</small></div>
+            <div className="budget-meter"><div><span>预算覆盖率</span><b>{percent(result.budgetCoverage)}</b></div><i><em style={{ width: `${Math.min(100, result.budgetCoverage * 100)}%` }} /></i></div>
+            <div className="profit-metric-grid three"><div><small>广告订单</small><strong>{number(result.adOrders, 0)} 单</strong></div><div><small>广告销售额</small><strong>${money(result.adSalesRevenue)}</strong></div><div><small>单广告订单成本</small><strong>${money(result.adCostPerOrder)}</strong></div><div><small>预计点击</small><strong>{number(result.estimatedClicks, 0)}</strong></div><div><small>隐含转化率</small><strong>{percent(result.impliedConversionRate)}</strong></div><div><small>实际 TACOS</small><strong>{percent(result.actualTacos)}</strong></div></div>
+          </section>
+          <section className="profit-panel ad-safety-panel">
+            <div className="profit-panel-heading"><ShieldCheck size={18} /><div><h2>广告安全线</h2><p>净利润降至 0 前的最大广告空间</p></div></div>
+            <div className="safety-line-grid"><div><small>盈亏平衡 ACOS</small><strong>{percent(result.breakEvenAcos)}</strong><span>当前 {percent(result.actualAcos)}</span></div><div><small>盈亏平衡 TACOS</small><strong>{percent(result.breakEvenTacos)}</strong><span>当前 {percent(result.actualTacos)}</span></div><div><small>最大广告花费</small><strong>${money(result.maxAffordableAdSpend)}</strong><span>余量 ${money(result.maxAffordableAdSpend - result.adSpend)}</span></div><div><small>最大安全 CPC</small><strong>${money(result.maxAffordableCpc)}</strong><span>当前 ${money(input.cpc)}</span></div></div>
+          </section>
+        </div>}
+
+        {tab === "promotion" && <div className="profit-workspace two-panel">
+          <section className="profit-panel">
+            <div className="profit-panel-heading"><Percent size={18} /><div><h2>促销参数</h2><p>Coupon 与 Deal 按各自订单占比加权</p></div></div>
+            <div className="promotion-input-block"><div><b>Coupon</b><span>适用于 {number(result.couponOrders, 0)} 单</span></div><div className="profit-form-grid">{percentField("Coupon 折扣比例", "couponRate")}{percentField("Coupon 订单比例", "couponOrderShare")}</div></div>
+            <div className="promotion-input-block deal"><div><b>Deal</b><span>适用于 {number(result.dealOrders, 0)} 单</span></div><div className="profit-form-grid">{percentField("Deal 折扣比例", "dealRate")}{percentField("Deal 订单比例", "dealOrderShare")}</div></div>
+          </section>
+          <section className="profit-panel">
+            <div className="profit-panel-heading"><BadgeDollarSign size={18} /><div><h2>成交价格瀑布</h2><p>折扣从 Listing 销售额中扣除一次</p></div></div>
+            <div className="price-waterfall"><div><span>Listing 月销售额</span><strong>${money(result.grossListingRevenue)}</strong></div><i>−</i><div className="coupon"><span>Coupon 损失</span><strong>${money(result.couponLoss)}</strong><small>${money(result.couponAmountPerOrder)} / Coupon 单</small></div><i>−</i><div className="deal"><span>Deal 损失</span><strong>${money(result.dealLoss)}</strong><small>${money(result.dealAmountPerOrder)} / Deal 单</small></div><i>=</i><div className="final"><span>实际销售额</span><strong>${money(result.netSalesRevenue)}</strong><small>均价 ${money(result.averageSellingPrice)}</small></div></div>
+            <div className="promotion-summary"><div><span>促销总损失</span><b>${money(result.promotionLoss)}</b></div><div><span>折扣占 Listing 销售额</span><b>{percent(result.grossListingRevenue > 0 ? result.promotionLoss / result.grossListingRevenue : 0)}</b></div></div>
+          </section>
+        </div>}
+
+        {tab === "simulation" && <div className="profit-workspace simulation-workspace">
+          <section className="scenario-intro"><div><Sparkles size={22} /><span><h2>运营情景模拟</h2><p>同一成本结构下，比较销量、广告、促销和退货变化后的利润结果。</p></span></div><div className="scenario-current"><small>当前正常模式</small><b>${money(result.netProfit)} / 月</b></div></section>
+          <div className="scenario-grid">{scenarios.map((scenario) => <article key={scenario.mode} className={`scenario-card ${scenario.mode}`}><div className="scenario-card-head"><span>{scenario.label}</span><strong className={scenario.result.netProfit >= 0 ? "positive" : "negative"}>${money(scenario.result.netProfit)}</strong><p>{scenario.description}</p></div><div className="scenario-profit-bar"><i style={{ width: `${Math.max(3, Math.abs(scenario.result.netProfit) / maxScenarioProfit * 100)}%` }} /></div><dl><div><dt>月订单</dt><dd>{scenario.result.monthlyOrders}</dd></div><div><dt>成交均价</dt><dd>${money(scenario.result.averageSellingPrice)}</dd></div><div><dt>广告花费</dt><dd>${money(scenario.result.adSpend)}</dd></div><div><dt>单件利润</dt><dd>${money(scenario.result.unitProfit)}</dd></div><div><dt>利润率</dt><dd>{percent(scenario.result.profitMargin)}</dd></div><div><dt>运营评级</dt><dd>{GRADE_LABELS[scenario.result.grade]}</dd></div></dl></article>)}</div>
+          <section className="profit-panel scenario-table-panel"><div className="profit-panel-heading"><Activity size={18} /><div><h2>情景对比表</h2><p>最大增长利润不等于最佳利润率，需同时看现金投入和风险</p></div></div><div className="profit-table-wrap"><table className="profit-table"><thead><tr><th>模式</th><th>月订单</th><th>销售额</th><th>广告花费</th><th>单件利润</th><th>利润率</th><th>月利润</th><th>评级</th></tr></thead><tbody>{scenarios.map((scenario) => <tr key={scenario.mode}><td><b>{scenario.label}</b></td><td>{scenario.result.monthlyOrders}</td><td>${money(scenario.result.netSalesRevenue)}</td><td>${money(scenario.result.adSpend)}</td><td>${money(scenario.result.unitProfit)}</td><td>{percent(scenario.result.profitMargin)}</td><td><b>${money(scenario.result.netProfit)}</b></td><td>{GRADE_LABELS[scenario.result.grade]}</td></tr>)}</tbody></table></div></section>
+        </div>}
+
+        {tab === "dashboard" && <div className="profit-workspace dashboard-workspace">
+          <section className="dashboard-metrics">
+            <div><span>实际销售额</span><strong>${money(result.netSalesRevenue)}</strong><small>Listing ${money(result.grossListingRevenue)}</small></div>
+            <div><span>单件利润</span><strong className={result.unitProfit >= 0 ? "positive" : "negative"}>${money(result.unitProfit)}</strong><small>成交均价 ${money(result.averageSellingPrice)}</small></div>
+            <div><span>利润率</span><strong>{percent(result.profitMargin)}</strong><small>毛利率 {percent(result.grossMargin)}</small></div>
+            <div><span>广告花费</span><strong>${money(result.adSpend)}</strong><small>预算覆盖 {percent(result.budgetCoverage)}</small></div>
+            <div><span>ACOS / TACOS</span><strong>{percent(result.actualAcos)} / {percent(result.actualTacos)}</strong><small>目标 TACOS {percent(input.targetTacos)}</small></div>
+            <div><span>盈亏平衡售价</span><strong>${money(result.breakEvenPrice)}</strong><small>当前 ${money(input.listingPrice)}</small></div>
+          </section>
+
+          <section className="profit-panel profit-bridge-panel">
+            <div className="profit-panel-heading"><TrendingUp size={18} /><div><h2>月利润桥</h2><p>从成交销售额逐项扣除真实运营成本</p></div></div>
+            <div className="profit-bridge"><div className="revenue"><span>成交销售额</span><strong>${money(result.netSalesRevenue)}</strong></div><div><span>产品成本</span><strong>-${money(result.totalProductCost)}</strong></div><div><span>物流成本</span><strong>-${money(result.totalLogisticsCost)}</strong></div><div><span>Amazon 费用</span><strong>-${money(result.totalAmazonFees)}</strong></div><div><span>退货损耗</span><strong>-${money(result.returnLoss)}</strong></div><div><span>广告花费</span><strong>-${money(result.adSpend)}</strong></div><div className="net"><span>月净利润</span><strong>${money(result.netProfit)}</strong></div></div>
+          </section>
+
+          <section className={`sku-decision-card grade-${result.grade}`}>
+            <div className="grade-seal"><span>SKU</span><strong>{GRADE_LABELS[result.grade]}</strong></div>
+            <div><span>运营可行性判断</span><h2>{result.gradeTitle}</h2><p>{result.recommendation}</p></div>
+            <div className="resource-actions"><div><Target size={16} /><span><b>广告安全线</b><small>ACOS 不高于 {percent(result.breakEvenAcos)}</small></span></div><div><Zap size={16} /><span><b>售价空间</b><small>较盈亏平衡价高 ${money(input.listingPrice - result.breakEvenPrice)}</small></span></div><div><Gauge size={16} /><span><b>资源池判断</b><small>{result.grade === "S" || result.grade === "A" ? "可进入重点资源池" : result.grade === "B" ? "优化后再放大" : "暂缓新增投入"}</small></span></div></div>
+          </section>
+
+          <section className="profit-panel dashboard-detail-panel">
+            <div className="profit-panel-heading"><BarChart3 size={18} /><div><h2>核心指标清单</h2><p>立项、复盘与预算审批所需指标</p></div></div>
+            <div className="dashboard-detail-grid"><div><small>订单数量</small><b>{result.monthlyOrders} 单</b></div><div><small>广告订单</small><b>{number(result.adOrders, 0)} 单</b></div><div><small>自然订单</small><b>{number(result.naturalOrders, 0)} 单</b></div><div><small>促销损失</small><b>${money(result.promotionLoss)}</b></div><div><small>退货损耗</small><b>${money(result.returnLoss)}</b></div><div><small>最大广告花费</small><b>${money(result.maxAffordableAdSpend)}</b></div><div><small>盈亏平衡 ACOS</small><b>{percent(result.breakEvenAcos)}</b></div><div><small>盈亏平衡 TACOS</small><b>{percent(result.breakEvenTacos)}</b></div><div><small>最大安全 CPC</small><b>${money(result.maxAffordableCpc)}</b></div><div><small>月利润</small><b>${money(result.netProfit)}</b></div></div>
+          </section>
+        </div>}
+
+        <div className="warning-list profit-warnings">{result.warnings.map((warning) => <p key={warning}><AlertTriangle size={14} />{warning}</p>)}</div>
+      </div>
+    </main>
+  );
+}
+
+export default ProfitSimulator;
