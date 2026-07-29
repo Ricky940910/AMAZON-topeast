@@ -21,19 +21,24 @@ import {
   Users,
 } from "lucide-react";
 import {
+  buildMatrixShipmentRows,
   buildShipmentRows,
   calculateCapacity,
-  calculateMultiSku,
   calculateRecommendedQuantity,
+  createCleanPackingPlan,
+  createGroupedPackingPlan,
+  createIdenticalPackingPlan,
   distributeAverage,
   distributeByCapacity,
   importedSkuSchema,
   maxQuantityDifference,
+  parseCartonGroups,
   validateCartons,
   type CartonLine,
   type Dimensions,
   type MultiSkuInput,
-  type MultiSkuResult,
+  type PackingMatrixPlan,
+  type PackingMatrixMode,
   type ShipmentRow,
 } from "./lib/packing";
 
@@ -67,9 +72,13 @@ const DEFAULT_SINGLE: SingleInput = {
 };
 
 const DEFAULT_MULTI: MultiSkuInput[] = [
-  { id: "sku-a", sku: "A", totalQty: 245, cartonCount: 8, productWeight: 0, productDimensions: [0, 0, 0] },
-  { id: "sku-b", sku: "B", totalQty: 128, cartonCount: 4, productWeight: 0, productDimensions: [0, 0, 0] },
-  { id: "sku-c", sku: "C", totalQty: 67, cartonCount: 3, productWeight: 0, productDimensions: [0, 0, 0] },
+  { id: "sku-a", sku: "A", totalQty: 20, cartonCount: 5, productWeight: 0, productDimensions: [0, 0, 0] },
+  { id: "sku-b", sku: "B", totalQty: 20, cartonCount: 5, productWeight: 0, productDimensions: [0, 0, 0] },
+  { id: "sku-d", sku: "D", totalQty: 15, cartonCount: 5, productWeight: 0, productDimensions: [0, 0, 0] },
+  { id: "sku-c", sku: "C", totalQty: 18, cartonCount: 6, productWeight: 0, productDimensions: [0, 0, 0] },
+  { id: "sku-e", sku: "E", totalQty: 18, cartonCount: 6, productWeight: 0, productDimensions: [0, 0, 0] },
+  { id: "sku-f", sku: "F", totalQty: 14, cartonCount: 7, productWeight: 0, productDimensions: [0, 0, 0] },
+  { id: "sku-s", sku: "S", totalQty: 14, cartonCount: 7, productWeight: 0, productDimensions: [0, 0, 0] },
 ];
 
 const LIMIT_LABELS = {
@@ -104,6 +113,39 @@ async function downloadRows(rows: ShipmentRow[], filename: string, formatType: "
   XLSX.writeFile(workbook, `${filename}.${formatType}`, formatType === "csv" ? { bookType: "csv" } : undefined);
 }
 
+async function downloadMatrixWorkbook(plan: PackingMatrixPlan, shipmentRows: ShipmentRow[]): Promise<void> {
+  const XLSX = await import("xlsx");
+  const workbook = XLSX.utils.book_new();
+  const matrixRows = plan.rows.map((row) => ({
+    SKU: row.sku,
+    备货量: row.totalQty,
+    ...Object.fromEntries(row.allocations.map((quantity, index) => [`箱${index + 1}`, quantity || ""])),
+  }));
+  const cartonRows = plan.cartons.map((carton) => ({
+    箱号: carton.cartonNumber,
+    箱组: carton.groupNumber,
+    总件数: carton.totalQuantity,
+    "总重量(kg)": Number(carton.totalWeight.toFixed(3)),
+    SKU种类: carton.skuCount,
+  }));
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(matrixRows), "装箱矩阵");
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(cartonRows), "纸箱汇总");
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(shipmentRows), "Amazon Shipment");
+  XLSX.writeFile(workbook, "Packing_Matrix.xlsx");
+}
+
+function summarizeAllocation(plan: PackingMatrixPlan, rowIndex: number): string {
+  const row = plan.rows[rowIndex];
+  if (!row) return "—";
+  const summaries = plan.groups.flatMap((group) => {
+    const values = row.allocations.slice(group.startCarton - 1, group.endCarton);
+    if (values.every((value) => value === 0)) return [];
+    const uniqueValues = [...new Set(values)];
+    return [`G${group.groupNumber}: ${uniqueValues.length === 1 ? `${uniqueValues[0]}/箱` : values.join("/")}`];
+  });
+  return summaries.join(" · ") || "未分配";
+}
+
 async function downloadImportTemplate(): Promise<void> {
   const XLSX = await import("xlsx");
   const worksheet = XLSX.utils.json_to_sheet([
@@ -119,12 +161,16 @@ function PackingAssistant() {
   const [mode, setMode] = useState<PackingMode>("average");
   const [single, setSingle] = useState(DEFAULT_SINGLE);
   const [multiRows, setMultiRows] = useState(DEFAULT_MULTI);
+  const [matrixMode, setMatrixMode] = useState<PackingMatrixMode>("grouped");
+  const [groupInput, setGroupInput] = useState("5,5,6,7");
+  const [cleanDefaultCartons, setCleanDefaultCartons] = useState(5);
   const [multiMaxWeight, setMultiMaxWeight] = useState(22);
   const [multiCartonDimensions, setMultiCartonDimensions] = useState<Dimensions>([60, 40, 40]);
   const [dailySales, setDailySales] = useState(25);
   const [transitDays, setTransitDays] = useState(30);
   const [safetyDays, setSafetyDays] = useState(15);
   const [copied, setCopied] = useState(false);
+  const [matrixCopied, setMatrixCopied] = useState(false);
   const [importMessage, setImportMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -159,12 +205,20 @@ function PackingAssistant() {
     }
   }, [enabledCapacity, mode, single]);
 
-  const multiResults = useMemo<MultiSkuResult[]>(
-    () => calculateMultiSku(multiRows, multiMaxWeight, multiCartonDimensions),
-    [multiRows, multiMaxWeight, multiCartonDimensions],
-  );
+  const groupSizes = useMemo(() => parseCartonGroups(groupInput), [groupInput]);
+  const multiPlan = useMemo(() => {
+    const plan = matrixMode === "identical"
+      ? createIdenticalPackingPlan(multiRows, multiMaxWeight)
+      : matrixMode === "clean"
+        ? createCleanPackingPlan(multiRows, cleanDefaultCartons, multiMaxWeight)
+        : createGroupedPackingPlan(multiRows, groupSizes, multiMaxWeight);
+    if (plan.totalCartons > 300) {
+      plan.errors.push(`当前方案生成 ${plan.totalCartons} 箱，在线矩阵最多展示 300 箱，请调整箱组或清装箱数。`);
+    }
+    return plan;
+  }, [cleanDefaultCartons, groupSizes, matrixMode, multiMaxWeight, multiRows]);
   const singleShipmentRows = useMemo(() => buildShipmentRows([{ sku: single.sku, cartons: singleResult.cartons }]), [single.sku, singleResult.cartons]);
-  const multiShipmentRows = useMemo(() => buildShipmentRows(multiResults), [multiResults]);
+  const multiShipmentRows = useMemo(() => buildMatrixShipmentRows(multiPlan, multiCartonDimensions), [multiCartonDimensions, multiPlan]);
   const recommendedQty = useMemo(() => calculateRecommendedQuantity(dailySales, transitDays, safetyDays), [dailySales, transitDays, safetyDays]);
 
   const updateSingleDimension = (key: "productDimensions" | "cartonDimensions", index: number, value: string) => {
@@ -199,6 +253,21 @@ function PackingAssistant() {
       dimensions[index] = numeric(value);
       return { ...row, productDimensions: dimensions };
     }));
+  };
+
+  const copyMatrix = async () => {
+    const header = ["SKU", "备货量", ...multiPlan.cartons.map((carton) => `箱${carton.cartonNumber}`)];
+    const rows = multiPlan.rows.map((row) => [row.sku, row.totalQty, ...row.allocations.map((quantity) => quantity || "")]);
+    const totals = ["每箱总件数", multiPlan.totalUnits, ...multiPlan.cartons.map((carton) => carton.totalQuantity)];
+    await navigator.clipboard.writeText([header, ...rows, totals].map((row) => row.join("\t")).join("\n"));
+    setMatrixCopied(true);
+    window.setTimeout(() => setMatrixCopied(false), 1600);
+  };
+
+  const loadPackingExample = () => {
+    setMultiRows(DEFAULT_MULTI.map((row) => ({ ...row, productDimensions: [...row.productDimensions] as Dimensions })));
+    setMatrixMode("grouped");
+    setGroupInput("5,5,6,7");
   };
 
   const importWorkbook = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -385,42 +454,72 @@ function PackingAssistant() {
         {view === "multi" && (
           <div className="multi-workspace">
             <section className="multi-toolbar">
-              <div><h2>多 SKU 装箱</h2><p>箱数填写 0 时，根据重量与尺寸自动计算；填写箱数时独立平均分配。</p></div>
+              <div><h2>多 SKU 分箱方案</h2><p>按箱组生成可复现的 SKU × 箱号矩阵，支持混装、完全同配和清装。</p></div>
               <div className="toolbar-actions">
                 <input ref={fileInputRef} hidden type="file" accept=".xlsx,.xls,.csv" onChange={importWorkbook} />
                 <button type="button" onClick={() => fileInputRef.current?.click()}><Upload size={15} /> 导入 Excel</button>
                 <button type="button" onClick={() => setMultiRows((rows) => [...rows, { id: createId(), sku: `SKU${String(rows.length + 1).padStart(3, "0")}`, totalQty: 1, cartonCount: 0, productWeight: 0, productDimensions: [0, 0, 0] }])}><Plus size={15} /> 添加 SKU</button>
+                <button type="button" onClick={loadPackingExample}><RotateCcw size={15} /> 图片示例</button>
               </div>
             </section>
             {importMessage && <div className={`import-message ${importMessage.startsWith("导入失败") ? "error" : ""}`}><Info size={14} />{importMessage}</div>}
 
-            <section className="multi-settings">
-              <label>自动模式最大箱重（kg）<input type="number" min="0" step="0.01" value={multiMaxWeight} onChange={(event) => setMultiMaxWeight(numeric(event.target.value))} /></label>
-              <div className="multi-carton-size"><span>共用纸箱尺寸（cm）</span>{multiCartonDimensions.map((value, index) => <input key={index} aria-label={`多SKU纸箱${["长", "宽", "高"][index]}`} type="number" min="0" step="0.01" value={value} onChange={(event) => setMultiCartonDimensions((dimensions) => { const next = [...dimensions] as Dimensions; next[index] = numeric(event.target.value); return next; })} />)}</div>
+            <section className="matrix-mode-panel">
+              <div className="matrix-mode-buttons">
+                <button className={matrixMode === "grouped" ? "active" : ""} type="button" onClick={() => setMatrixMode("grouped")}><Users size={16} /><span><b>固定箱组混装</b><small>参考方案 1 / 2</small></span></button>
+                <button className={matrixMode === "identical" ? "active" : ""} type="button" onClick={() => setMatrixMode("identical")}><Box size={16} /><span><b>完全同配混装</b><small>参考方案 4</small></span></button>
+                <button className={matrixMode === "clean" ? "active" : ""} type="button" onClick={() => setMatrixMode("clean")}><PackagePlus size={16} /><span><b>清装</b><small>参考方案 3</small></span></button>
+              </div>
+              <div className="multi-settings">
+                {matrixMode === "grouped" && <label className="group-input">箱组结构<input value={groupInput} placeholder="5,5,6,7" onChange={(event) => setGroupInput(event.target.value)} /><small>每个数字代表一种重复箱型的箱数</small></label>}
+                {matrixMode === "identical" && <div className="matrix-auto-note"><Sparkles size={15} /><span>系统自动以全部 SKU 数量的最大公约数作为箱数。</span></div>}
+                {matrixMode === "clean" && <label>默认每 SKU 箱数<input type="number" min="1" step="1" value={cleanDefaultCartons} onChange={(event) => setCleanDefaultCartons(integer(event.target.value))} /></label>}
+                <label>最大箱重（kg）<input type="number" min="0" step="0.01" value={multiMaxWeight} onChange={(event) => setMultiMaxWeight(numeric(event.target.value))} /></label>
+                <div className="multi-carton-size"><span>共用纸箱尺寸（cm）</span>{multiCartonDimensions.map((value, index) => <input key={index} aria-label={`多SKU纸箱${["长", "宽", "高"][index]}`} type="number" min="0" step="0.01" value={value} onChange={(event) => setMultiCartonDimensions((dimensions) => { const next = [...dimensions] as Dimensions; next[index] = numeric(event.target.value); return next; })} />)}</div>
+              </div>
             </section>
 
             <section className="multi-table-section">
               <div className="packing-table-wrap">
                 <table className="packing-table multi-table">
-                  <thead><tr><th>SKU</th><th>总数量</th><th>箱数</th><th>单件重量 kg</th><th>产品尺寸 cm</th><th>装箱结果</th><th /></tr></thead>
-                  <tbody>{multiRows.map((row, rowIndex) => {
-                    const result = multiResults[rowIndex];
-                    return <tr key={row.id}>
+                  <thead><tr><th>SKU</th><th>备货量</th><th>清装箱数</th><th>单件重量 kg</th><th>产品尺寸 cm</th><th>分配摘要</th><th /></tr></thead>
+                  <tbody>{multiRows.map((row, rowIndex) => <tr key={row.id}>
                       <td><input value={row.sku} onChange={(event) => updateMulti(row.id, { sku: event.target.value })} /></td>
                       <td><input type="number" min="1" step="1" value={row.totalQty} onChange={(event) => updateMulti(row.id, { totalQty: integer(event.target.value) })} /></td>
-                      <td><input type="number" min="0" step="1" value={row.cartonCount} onChange={(event) => updateMulti(row.id, { cartonCount: integer(event.target.value) })} /></td>
+                      <td><input disabled={matrixMode !== "clean"} type="number" min="0" step="1" value={row.cartonCount} onChange={(event) => updateMulti(row.id, { cartonCount: integer(event.target.value) })} /></td>
                       <td><input type="number" min="0" step="0.001" value={row.productWeight} onChange={(event) => updateMulti(row.id, { productWeight: numeric(event.target.value) })} /></td>
                       <td><div className="mini-dimensions">{row.productDimensions.map((value, index) => <input key={index} aria-label={`${row.sku}产品${["长", "宽", "高"][index]}`} type="number" min="0" step="0.01" value={value} onChange={(event) => updateMultiDimension(row.id, index, event.target.value)} />)}</div></td>
-                      <td>{result?.error ? <span className="multi-error">{result.error}</span> : <div className="packing-sequence"><b>{result?.cartons.length ?? 0} 箱</b><span>{result?.cartons.map((carton) => carton.quantity).join("/")}</span></div>}</td>
+                      <td><div className="packing-sequence"><b>{multiPlan.rows[rowIndex]?.packedQty ?? 0} / {row.totalQty} 件</b><span>{summarizeAllocation(multiPlan, rowIndex)}</span></div></td>
                       <td><button className="delete-row" type="button" title="删除 SKU" onClick={() => setMultiRows((rows) => rows.filter((item) => item.id !== row.id))}><Trash2 size={15} /></button></td>
-                    </tr>;
-                  })}</tbody>
+                    </tr>)}</tbody>
+                </table>
+              </div>
+            </section>
+
+            <section className="packing-matrix-section">
+              <div className="matrix-heading">
+                <div><h2>装箱矩阵</h2><p>{multiPlan.modeLabel} · {multiPlan.totalCartons} 箱 · {multiPlan.totalUnits} 件</p></div>
+                <div className="matrix-stats"><span><small>混装箱</small><b>{multiPlan.mixedCartonCount}</b></span><span><small>箱型配置</small><b>{multiPlan.distinctConfigurations}</b></span><span><small>箱组</small><b>{multiPlan.groups.length}</b></span></div>
+                <div className="toolbar-actions"><button type="button" onClick={copyMatrix} disabled={multiPlan.errors.length > 0}><Copy size={15} /> {matrixCopied ? "已复制" : "复制矩阵"}</button><button type="button" onClick={() => downloadMatrixWorkbook(multiPlan, multiShipmentRows)} disabled={multiPlan.errors.length > 0}><FileSpreadsheet size={15} /> 导出矩阵</button></div>
+              </div>
+              {(multiPlan.errors.length > 0 || multiPlan.warnings.length > 0) && <div className={`matrix-message ${multiPlan.errors.length > 0 ? "error" : ""}`}><Info size={15} /><span>{[...multiPlan.errors, ...multiPlan.warnings].join("；")}</span></div>}
+              <div className="packing-matrix-wrap">
+                <table className="packing-matrix-table">
+                  <thead>
+                    <tr><th className="matrix-sku-column" rowSpan={2}>SKU</th><th className="matrix-qty-column" rowSpan={2}>备货量</th>{multiPlan.groups.map((group) => <th key={group.groupNumber} colSpan={group.cartonCount}>G{group.groupNumber} · {group.cartonCount} 箱</th>)}</tr>
+                    <tr>{multiPlan.cartons.map((carton) => <th key={carton.cartonNumber}>{carton.cartonNumber}</th>)}</tr>
+                  </thead>
+                  <tbody>
+                    {multiPlan.rows.map((row) => <tr key={row.id}><th className="matrix-sku-column">{row.sku}</th><td className="matrix-qty-column">{row.totalQty}</td>{row.allocations.map((quantity, index) => <td className={quantity > 0 ? `filled group-${multiPlan.cartons[index]?.groupNumber % 4}` : ""} key={`${row.id}-${index}`}>{quantity || ""}</td>)}</tr>)}
+                    <tr className="matrix-total-row"><th className="matrix-sku-column">每箱总件数</th><td className="matrix-qty-column">{multiPlan.totalUnits}</td>{multiPlan.cartons.map((carton) => <td key={carton.cartonNumber}>{carton.totalQuantity}</td>)}</tr>
+                    <tr className="matrix-weight-row"><th className="matrix-sku-column">每箱重量 kg</th><td className="matrix-qty-column">—</td>{multiPlan.cartons.map((carton) => <td className={multiMaxWeight > 0 && carton.totalWeight > multiMaxWeight ? "overweight" : ""} key={carton.cartonNumber}>{format(carton.totalWeight)}</td>)}</tr>
+                  </tbody>
                 </table>
               </div>
             </section>
 
             <section className="shipment-section">
-              <div className="shipment-heading"><div><Ship size={19} /><span><h2>Amazon Shipment 数据</h2><p>{multiShipmentRows.length} 条纸箱记录，可直接导出 Excel 或 CSV。</p></span></div><div className="toolbar-actions"><button type="button" onClick={() => downloadRows(multiShipmentRows, "Packing_List", "xlsx")} disabled={!multiShipmentRows.length}><FileSpreadsheet size={15} /> Packing_List.xlsx</button><button type="button" onClick={() => downloadRows(multiShipmentRows, "Amazon_Shipment", "csv")} disabled={!multiShipmentRows.length}><Download size={15} /> Shipment.csv</button></div></div>
+              <div className="shipment-heading"><div><Ship size={19} /><span><h2>Amazon Shipment 数据</h2><p>{multiShipmentRows.length} 条 SKU-纸箱记录，由装箱矩阵直接生成。</p></span></div><div className="toolbar-actions"><button type="button" onClick={() => downloadRows(multiShipmentRows, "Packing_List", "xlsx")} disabled={!multiShipmentRows.length || multiPlan.errors.length > 0}><FileSpreadsheet size={15} /> Packing_List.xlsx</button><button type="button" onClick={() => downloadRows(multiShipmentRows, "Amazon_Shipment", "csv")} disabled={!multiShipmentRows.length || multiPlan.errors.length > 0}><Download size={15} /> Shipment.csv</button></div></div>
               <div className="shipment-preview"><table className="packing-table"><thead><tr><th>SKU</th><th>Carton Number</th><th>Quantity</th><th>Weight</th><th>Length</th><th>Width</th><th>Height</th></tr></thead><tbody>{multiShipmentRows.slice(0, 12).map((row, index) => <tr key={`${row.SKU}-${row["Carton Number"]}-${index}`}><td>{row.SKU}</td><td>{row["Carton Number"]}</td><td>{row.Quantity}</td><td>{format(row["Weight (kg)"])} kg</td><td>{row["Length (cm)"]}</td><td>{row["Width (cm)"]}</td><td>{row["Height (cm)"]}</td></tr>)}</tbody></table>{multiShipmentRows.length > 12 && <p>预览前 12 条，导出文件包含全部 {multiShipmentRows.length} 条。</p>}</div>
             </section>
           </div>

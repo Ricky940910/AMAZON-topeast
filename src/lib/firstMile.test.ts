@@ -21,7 +21,8 @@ const input: FirstMileInput = {
   cartonHeightCm: 30,
   cartonGrossWeightKg: 11,
   transportMode: "air-delivery",
-  ratePerChargeUnit: 40,
+  ratePerKg: 40,
+  ratePerCbm: 0,
   minimumChargeable: 21,
   billingIncrement: 0.5,
   volumeWeightDivisor: 6000,
@@ -30,10 +31,6 @@ const input: FirstMileInput = {
     { id: "customs", name: "清关费", category: "destination", amount: 800 },
     { id: "duty", name: "关税", category: "tax", amount: 1200 },
   ],
-  insuranceEnabled: true,
-  cargoValueCny: 50_000,
-  insuranceRate: 0.3,
-  minimumInsurancePremium: 100,
   salePrice: 29.99,
   exchangeRateCnyPerCurrency: 7.2,
 };
@@ -69,16 +66,10 @@ describe("first mile engine", () => {
     expect(result.freightCost).toBe(22_000);
     expect(result.nonTaxAdditionalFees).toBe(1300);
     expect(result.importTaxes).toBe(1200);
-    expect(result.insuranceFee).toBe(150);
-    expect(result.logisticsCostBeforeImportTaxes).toBe(23_450);
-    expect(result.totalFirstMileCost).toBe(24_650);
-    expect(result.unitLogisticsCostBeforeImportTaxes).toBeCloseTo(23.45, 8);
+    expect(result.logisticsCostBeforeImportTaxes).toBe(23_300);
+    expect(result.totalFirstMileCost).toBe(24_500);
+    expect(result.unitLogisticsCostBeforeImportTaxes).toBeCloseTo(23.3, 8);
     expect(result.unitImportTax).toBeCloseTo(1.2, 8);
-  });
-
-  it("treats the insurance rate input as a percentage", () => {
-    const result = calculateFirstMile({ ...input, cargoValueCny: 50_000, insuranceRate: 0.3, minimumInsurancePremium: 0 });
-    expect(result.insuranceFee).toBe(150);
   });
 
   it("applies minimum volume billing to sea freight", () => {
@@ -88,7 +79,8 @@ describe("first mile engine", () => {
       unitsPerCarton: 20,
       cartonCount: 5,
       transportMode: "sea-fast",
-      ratePerChargeUnit: 1000,
+      ratePerKg: 0,
+      ratePerCbm: 1000,
       minimumChargeable: 1,
       billingIncrement: 0.01,
     });
@@ -100,6 +92,23 @@ describe("first mile engine", () => {
   it("calculates transit days", () => {
     const result = calculateFirstMile(input);
     expect(result.transitDays).toBe(30);
+  });
+
+  it("uses chargeable kilograms for AGL air and reports the weight source", () => {
+    const result = calculateFirstMile({ ...input, transportMode: "agl-air", cartonGrossWeightKg: 8, ratePerKg: 38, ratePerCbm: 900 });
+    expect(result.chargeBasis).toBe("weight");
+    expect(result.weightChargeSource).toBe("dimensional");
+    expect(result.billedQuantity).toBe(500);
+    expect(result.appliedRate).toBe(38);
+    expect(result.freightCost).toBe(19_000);
+  });
+
+  it("uses CBM pricing for AGL sea even when a kilogram quote is present", () => {
+    const result = calculateFirstMile({ ...input, transportMode: "agl-sea", ratePerKg: 8, ratePerCbm: 920, minimumChargeable: 1, billingIncrement: 0.01 });
+    expect(result.chargeBasis).toBe("volume");
+    expect(result.billedQuantity).toBe(3);
+    expect(result.appliedRate).toBe(920);
+    expect(result.freightCost).toBe(2760);
   });
 
   it("warns about inconsistent cartons and impossible weights", () => {

@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   buildShipmentRows,
+  buildMatrixShipmentRows,
   calculateCapacity,
+  calculateCommonCartonCount,
   calculateMultiSku,
   calculateOrientation,
   calculateRecommendedQuantity,
+  createCleanPackingPlan,
+  createGroupedPackingPlan,
+  createIdenticalPackingPlan,
   distributeAverage,
   distributeByCapacity,
   maxQuantityDifference,
@@ -59,6 +64,62 @@ describe("multi SKU and shipment data", () => {
     expect(result[1].cartons.map((carton) => carton.quantity)).toEqual([32, 32, 32, 32]);
     expect(result[2].cartons.map((carton) => carton.quantity)).toEqual([23, 22, 22]);
     expect(buildShipmentRows(result)).toHaveLength(15);
+  });
+});
+
+describe("multi SKU carton matrix", () => {
+  const row = (id: string, sku: string, totalQty: number, cartonCount = 0, productWeight = 0) => ({
+    id, sku, totalQty, cartonCount, productWeight, productDimensions: [0, 0, 0] as [number, number, number],
+  });
+
+  it("builds a fixed-group mixed plan with identical cartons inside every group", () => {
+    const plan = createGroupedPackingPlan([
+      row("a", "A", 20), row("b", "B", 20), row("d", "D", 15), row("c", "C", 18),
+      row("e", "E", 18), row("f", "F", 14), row("s", "S", 14),
+    ], [5, 5, 6, 7]);
+
+    expect(plan.errors).toEqual([]);
+    expect(plan.totalCartons).toBe(23);
+    expect(plan.rows.map((item) => item.packedQty)).toEqual([20, 20, 15, 18, 18, 14, 14]);
+    expect(Math.max(...plan.cartons.map((carton) => carton.totalQuantity))).toBeLessThanOrEqual(6);
+    for (const group of plan.groups) {
+      const signatures = Array.from({ length: group.cartonCount }, (_, index) =>
+        plan.rows.map((item) => item.allocations[group.startCarton - 1 + index]).join("/"),
+      );
+      expect(new Set(signatures).size).toBe(1);
+    }
+  });
+
+  it("uses the greatest common divisor for a fully identical mixed plan", () => {
+    expect(calculateCommonCartonCount([38, 19, 114, 57])).toBe(19);
+    const plan = createIdenticalPackingPlan([
+      row("a", "A", 38), row("b", "B", 19), row("d", "D", 114), row("c", "C", 57),
+    ]);
+    expect(plan.totalCartons).toBe(19);
+    expect(plan.distinctConfigurations).toBe(1);
+    expect(plan.rows.map((item) => item.allocations[0])).toEqual([2, 1, 6, 3]);
+  });
+
+  it("keeps every SKU in its own continuous carton group for clean packing", () => {
+    const plan = createCleanPackingPlan([
+      row("a", "A", 25, 5), row("b", "B", 25, 5), row("d", "D", 25, 5), row("c", "C", 25, 5),
+    ], 5);
+    expect(plan.totalCartons).toBe(20);
+    expect(plan.mixedCartonCount).toBe(0);
+    expect(plan.rows[0].allocations.slice(0, 5)).toEqual([5, 5, 5, 5, 5]);
+    expect(plan.rows[1].allocations.slice(5, 10)).toEqual([5, 5, 5, 5, 5]);
+  });
+
+  it("reports quantities that cannot be represented by the selected groups", () => {
+    const plan = createGroupedPackingPlan([row("a", "A", 12)], [5]);
+    expect(plan.errors[0]).toContain("无法由箱组");
+  });
+
+  it("generates shipment rows from non-empty matrix cells", () => {
+    const plan = createIdenticalPackingPlan([row("a", "A", 10, 0, 0.5), row("b", "B", 5, 0, 1)]);
+    const shipment = buildMatrixShipmentRows(plan, [60, 40, 40]);
+    expect(shipment).toHaveLength(10);
+    expect(shipment[0]["Weight (kg)"]).toBe(2);
   });
 });
 

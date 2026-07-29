@@ -1,12 +1,14 @@
-export type TransportMode = "sea-fast" | "sea-slow" | "air-delivery" | "air" | "express" | "rail" | "truck-eu";
+export type TransportMode = "sea-fast" | "sea-slow" | "air-delivery" | "air" | "express" | "rail" | "truck-eu" | "agl-air" | "agl-sea";
 export type ChargeBasis = "volume" | "weight";
+export type WeightChargeSource = "actual" | "dimensional";
 export type DestinationCode = "US" | "CA" | "UK" | "DE" | "JP";
 export type FeeCategory = "origin" | "carrier" | "destination" | "tax" | "other";
 
 export interface TransportModeConfig {
   label: string;
   basis: ChargeBasis;
-  defaultRate: number;
+  defaultRatePerKg: number;
+  defaultRatePerCbm: number;
   defaultMinimum: number;
   defaultIncrement: number;
   defaultDivisor: number;
@@ -14,13 +16,15 @@ export interface TransportModeConfig {
 }
 
 export const TRANSPORT_MODE_CONFIG: Record<TransportMode, TransportModeConfig> = {
-  "sea-fast": { label: "海运快船", basis: "volume", defaultRate: 980, defaultMinimum: 1, defaultIncrement: 0.01, defaultDivisor: 6000, unitLabel: "CBM" },
-  "sea-slow": { label: "海运慢船", basis: "volume", defaultRate: 620, defaultMinimum: 1, defaultIncrement: 0.01, defaultDivisor: 6000, unitLabel: "CBM" },
-  "air-delivery": { label: "空派", basis: "weight", defaultRate: 42, defaultMinimum: 21, defaultIncrement: 0.5, defaultDivisor: 6000, unitLabel: "KG" },
-  air: { label: "空运", basis: "weight", defaultRate: 35, defaultMinimum: 45, defaultIncrement: 0.5, defaultDivisor: 6000, unitLabel: "KG" },
-  express: { label: "国际快递", basis: "weight", defaultRate: 52, defaultMinimum: 0.5, defaultIncrement: 0.5, defaultDivisor: 5000, unitLabel: "KG" },
-  rail: { label: "铁路", basis: "volume", defaultRate: 1500, defaultMinimum: 1, defaultIncrement: 0.01, defaultDivisor: 6000, unitLabel: "CBM" },
-  "truck-eu": { label: "卡航（欧洲）", basis: "volume", defaultRate: 1900, defaultMinimum: 1, defaultIncrement: 0.01, defaultDivisor: 6000, unitLabel: "CBM" },
+  "sea-fast": { label: "海运快船", basis: "volume", defaultRatePerKg: 0, defaultRatePerCbm: 980, defaultMinimum: 1, defaultIncrement: 0.01, defaultDivisor: 6000, unitLabel: "CBM" },
+  "sea-slow": { label: "海运慢船", basis: "volume", defaultRatePerKg: 0, defaultRatePerCbm: 620, defaultMinimum: 1, defaultIncrement: 0.01, defaultDivisor: 6000, unitLabel: "CBM" },
+  "air-delivery": { label: "空派", basis: "weight", defaultRatePerKg: 42, defaultRatePerCbm: 0, defaultMinimum: 21, defaultIncrement: 0.5, defaultDivisor: 6000, unitLabel: "KG" },
+  air: { label: "空运", basis: "weight", defaultRatePerKg: 35, defaultRatePerCbm: 0, defaultMinimum: 45, defaultIncrement: 0.5, defaultDivisor: 6000, unitLabel: "KG" },
+  express: { label: "国际快递", basis: "weight", defaultRatePerKg: 52, defaultRatePerCbm: 0, defaultMinimum: 0.5, defaultIncrement: 0.5, defaultDivisor: 5000, unitLabel: "KG" },
+  rail: { label: "铁路", basis: "volume", defaultRatePerKg: 0, defaultRatePerCbm: 1500, defaultMinimum: 1, defaultIncrement: 0.01, defaultDivisor: 6000, unitLabel: "CBM" },
+  "truck-eu": { label: "卡航（欧洲）", basis: "volume", defaultRatePerKg: 0, defaultRatePerCbm: 1900, defaultMinimum: 1, defaultIncrement: 0.01, defaultDivisor: 6000, unitLabel: "CBM" },
+  "agl-air": { label: "AGL 空运", basis: "weight", defaultRatePerKg: 0, defaultRatePerCbm: 0, defaultMinimum: 45, defaultIncrement: 0.5, defaultDivisor: 6000, unitLabel: "KG" },
+  "agl-sea": { label: "AGL 海运", basis: "volume", defaultRatePerKg: 0, defaultRatePerCbm: 0, defaultMinimum: 1, defaultIncrement: 0.01, defaultDivisor: 6000, unitLabel: "CBM" },
 };
 
 export const DESTINATION_CONFIG: Record<DestinationCode, { label: string; currency: "USD" | "CAD" | "GBP" | "EUR" | "JPY"; symbol: string; defaultExchangeRate: number }> = {
@@ -58,15 +62,12 @@ export interface FirstMileInput {
   cartonHeightCm: number;
   cartonGrossWeightKg: number;
   transportMode: TransportMode;
-  ratePerChargeUnit: number;
+  ratePerKg: number;
+  ratePerCbm: number;
   minimumChargeable: number;
   billingIncrement: number;
   volumeWeightDivisor: number;
   fees: AdditionalFeeItem[];
-  insuranceEnabled: boolean;
-  cargoValueCny: number;
-  insuranceRate: number;
-  minimumInsurancePremium: number;
   salePrice: number;
   exchangeRateCnyPerCurrency: number;
 }
@@ -85,7 +86,9 @@ export interface FirstMileResult {
   rawChargeableWeightKg: number;
   rawBillingQuantity: number;
   billedQuantity: number;
+  appliedRate: number;
   chargeBasis: ChargeBasis;
+  weightChargeSource: WeightChargeSource;
   chargeUnitLabel: string;
   freightCost: number;
   originFees: number;
@@ -95,7 +98,6 @@ export interface FirstMileResult {
   otherFees: number;
   nonTaxAdditionalFees: number;
   additionalFeesTotal: number;
-  insuranceFee: number;
   logisticsCostBeforeImportTaxes: number;
   totalFirstMileCost: number;
   unitLogisticsCostBeforeImportTaxes: number;
@@ -151,7 +153,9 @@ export function calculateFirstMile(input: FirstMileInput): FirstMileResult {
   const rawChargeableWeightKg = Math.max(grossWeightKg, dimensionalWeightKg);
   const rawBillingQuantity = mode.basis === "weight" ? rawChargeableWeightKg : totalVolumeCbm;
   const billedQuantity = roundUp(Math.max(rawBillingQuantity, positive(input.minimumChargeable)), positive(input.billingIncrement));
-  const freightCost = billedQuantity * positive(input.ratePerChargeUnit);
+  const appliedRate = mode.basis === "weight" ? positive(input.ratePerKg) : positive(input.ratePerCbm);
+  const freightCost = billedQuantity * appliedRate;
+  const weightChargeSource: WeightChargeSource = dimensionalWeightKg > grossWeightKg ? "dimensional" : "actual";
 
   const originFees = sumFees(input.fees, "origin");
   const carrierFees = sumFees(input.fees, "carrier");
@@ -160,10 +164,7 @@ export function calculateFirstMile(input: FirstMileInput): FirstMileResult {
   const otherFees = sumFees(input.fees, "other");
   const nonTaxAdditionalFees = originFees + carrierFees + destinationFees + otherFees;
   const additionalFeesTotal = nonTaxAdditionalFees + importTaxes;
-  const insuranceFee = input.insuranceEnabled
-    ? Math.max(positive(input.cargoValueCny) * positive(input.insuranceRate) / 100, positive(input.minimumInsurancePremium))
-    : 0;
-  const logisticsCostBeforeImportTaxes = freightCost + nonTaxAdditionalFees + insuranceFee;
+  const logisticsCostBeforeImportTaxes = freightCost + nonTaxAdditionalFees;
   const totalFirstMileCost = logisticsCostBeforeImportTaxes + importTaxes;
   const unitLogisticsCostBeforeImportTaxes = totalUnits > 0 ? logisticsCostBeforeImportTaxes / totalUnits : 0;
   const unitImportTax = totalUnits > 0 ? importTaxes / totalUnits : 0;
@@ -180,7 +181,7 @@ export function calculateFirstMile(input: FirstMileInput): FirstMileResult {
   if (unitsPerCarton === 0) warnings.push("单箱装箱数必须大于 0，无法校验箱数。");
   if (cartonVolumeCm3 === 0) warnings.push("外箱尺寸不完整，当前总体积与体积重无效。");
   if (grossWeightKg === 0) warnings.push("单箱毛重或箱数为 0，当前实际毛重无效。");
-  if (positive(input.ratePerChargeUnit) === 0) warnings.push("物流报价为 0，请填写承运商实际报价。");
+  if (appliedRate === 0) warnings.push(`当前${mode.basis === "weight" ? "每公斤" : "每立方"}报价为 0，请填写承运商实际报价。`);
   if (exchangeRate === 0) warnings.push("汇率为 0，无法换算利润测算器使用的销售币种成本。");
   if (expectedCartonCount > 0 && cartonCount !== expectedCartonCount) warnings.push(`按总件数与装箱数应为 ${expectedCartonCount} 箱，当前填写 ${cartonCount} 箱。`);
   if (cartonCapacityUnits < totalUnits) warnings.push(`当前 ${cartonCount} 箱最多装 ${cartonCapacityUnits} 件，少于计划发货 ${totalUnits} 件。`);
@@ -188,6 +189,7 @@ export function calculateFirstMile(input: FirstMileInput): FirstMileResult {
   if (cartonSpaceUtilization > 1.02) warnings.push("产品总体积超过外箱总体积，请检查产品尺寸、装箱数或箱规。");
   if (mode.basis === "weight" && dimensionalWeightKg > grossWeightKg) warnings.push(`当前采用体积重计费，体积重比实际毛重高 ${(dimensionalWeightKg - grossWeightKg).toFixed(2)} kg。`);
   if (input.transportMode === "express" && divisor !== 5000) warnings.push("国际快递体积重除数因承运商而异，当前已使用自定义除数，请以物流商账单为准。");
+  if (input.transportMode === "agl-air" || input.transportMode === "agl-sea") warnings.push("AGL 报价会随航线、仓库、货型和出运日期变化，请以 Seller Central 当前报价为准。");
   if (transitDays !== null && transitDays < 0) warnings.push("预计到仓日期早于发货日期，请检查日期。");
   if (importTaxes > 0) warnings.push("关税/VAT 已包含在含税头程总成本中；同步时会拆分写入物流与进口税字段，避免重复扣除。");
   warnings.push("物流单价、体积重除数、最低计费量和进位规则属于承运商报价参数，并非 Amazon 官方费率。");
@@ -206,7 +208,9 @@ export function calculateFirstMile(input: FirstMileInput): FirstMileResult {
     rawChargeableWeightKg,
     rawBillingQuantity,
     billedQuantity,
+    appliedRate,
     chargeBasis: mode.basis,
+    weightChargeSource,
     chargeUnitLabel: mode.unitLabel,
     freightCost,
     originFees,
@@ -216,7 +220,6 @@ export function calculateFirstMile(input: FirstMileInput): FirstMileResult {
     otherFees,
     nonTaxAdditionalFees,
     additionalFeesTotal,
-    insuranceFee,
     logisticsCostBeforeImportTaxes,
     totalFirstMileCost,
     unitLogisticsCostBeforeImportTaxes,
