@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -42,8 +42,14 @@ import {
   type SalesSite,
   type SellerPromotionType,
 } from "./lib/profit";
+import type { FirstMileTransfer } from "./FirstMileCalculator";
 
 type ProfitTab = "product" | "cost" | "ads" | "promotion" | "simulation" | "dashboard";
+
+interface ProfitSimulatorProps {
+  firstMileTransfer?: FirstMileTransfer | null;
+  onFirstMileTransferApplied?: () => void;
+}
 
 const DEFAULT_INPUT: ProfitInput = {
   productName: "示例新品",
@@ -80,6 +86,7 @@ const DEFAULT_INPUT: ProfitInput = {
   otherProductCost: 0.20,
   firstMileCost: 1.10,
   lastMileCost: 0,
+  customsDuty: 0,
   referralFee: 4.50,
   fbaFee: 4.85,
   storageFee: 0.18,
@@ -165,7 +172,7 @@ function buildSummaryRows(input: ProfitInput, result: ReturnType<typeof calculat
     { 分区: "促销", 指标: "Seller Central Promotion", 数值: input.sellerPromotionEnabled ? SELLER_PROMOTION_TYPE_LABELS[input.sellerPromotionType] : "未启用" },
     { 分区: "促销", 指标: "Coupon + Promotion 设置", 数值: input.sellerPromotionEnabled ? input.couponPromotionStacking === "allow" ? "允许叠加" : "不允许叠加，取较高折扣" : "不适用" },
     { 分区: "成本", 指标: "单件产品成本", 数值: money(result.productCostPerUnit) },
-    { 分区: "成本", 指标: "单件物流成本", 数值: money(result.logisticsCostPerUnit) },
+    { 分区: "成本", 指标: "单件物流及进口税", 数值: money(result.logisticsCostPerUnit) },
     { 分区: "成本", 指标: "单件 Amazon 费用", 数值: money(result.amazonFeePerUnit) },
     { 分区: "成本", 指标: "单件退货损耗", 数值: money(result.returnLossPerUnit) },
     { 分区: "广告", 指标: "广告订单", 数值: number(result.adOrders) },
@@ -213,7 +220,7 @@ async function exportProfitCsv(input: ProfitInput): Promise<void> {
   XLSX.writeFile(workbook, "Amazon_Profit_Simulator.csv", { bookType: "csv" });
 }
 
-function ProfitSimulator() {
+function ProfitSimulator({ firstMileTransfer, onFirstMileTransferApplied }: ProfitSimulatorProps) {
   const [tab, setTab] = useState<ProfitTab>("dashboard");
   const [input, setInput] = useState(DEFAULT_INPUT);
   const [copied, setCopied] = useState(false);
@@ -243,6 +250,23 @@ function ProfitSimulator() {
       category: nextMarketplace.categories.includes(current.category) ? current.category : nextMarketplace.categories[0],
     }));
   };
+
+  useEffect(() => {
+    if (!firstMileTransfer) return;
+    const matchingSite = Object.entries(MARKETPLACE_CONFIG).find(([, config]) => config.currency === firstMileTransfer.currency)?.[0] as SalesSite | undefined;
+    setInput((current) => ({
+      ...current,
+      ...(matchingSite ? {
+        salesSite: matchingSite,
+        currency: MARKETPLACE_CONFIG[matchingSite].currency,
+        category: MARKETPLACE_CONFIG[matchingSite].categories.includes(current.category) ? current.category : MARKETPLACE_CONFIG[matchingSite].categories[0],
+      } : {}),
+      asinSku: firstMileTransfer.sourceSku || current.asinSku,
+      firstMileCost: firstMileTransfer.logisticsCostPerUnit,
+      customsDuty: firstMileTransfer.importTaxPerUnit,
+    }));
+    onFirstMileTransferApplied?.();
+  }, [firstMileTransfer, onFirstMileTransferApplied]);
 
   const copySummary = async () => {
     await writeClipboard([
@@ -374,8 +398,8 @@ function ProfitSimulator() {
           </section>
           <section className="profit-panel">
             <div className="profit-panel-heading"><WalletCards size={18} /><div><h2>物流与 Amazon 费用</h2><p>FBA 费用采用上游测算结果输入</p></div></div>
-            <div className="profit-form-grid">{numberField("头程成本/件", "firstMileCost", { prefix: currencySymbol })}{numberField("尾程成本/件", "lastMileCost", { prefix: currencySymbol })}{numberField("Referral Fee", "referralFee", { prefix: currencySymbol })}{numberField("FBA 配送费", "fbaFee", { prefix: currencySymbol })}{numberField("仓储费/件", "storageFee", { prefix: currencySymbol })}{numberField("其他 Amazon 费", "otherAmazonFee", { prefix: currencySymbol })}</div>
-            <div className="double-total"><div><span>物流成本/件</span><b>{formattedMoney(result.logisticsCostPerUnit)}</b></div><div><span>Amazon 费用/件</span><b>{formattedMoney(result.amazonFeePerUnit)}</b></div></div>
+            <div className="profit-form-grid">{numberField("头程物流/件", "firstMileCost", { prefix: currencySymbol })}{numberField("关税 / VAT/件", "customsDuty", { prefix: currencySymbol })}{numberField("尾程成本/件", "lastMileCost", { prefix: currencySymbol })}{numberField("Referral Fee", "referralFee", { prefix: currencySymbol })}{numberField("FBA 配送费", "fbaFee", { prefix: currencySymbol })}{numberField("仓储费/件", "storageFee", { prefix: currencySymbol })}{numberField("其他 Amazon 费", "otherAmazonFee", { prefix: currencySymbol })}</div>
+            <div className="double-total"><div><span>物流及进口税/件</span><b>{formattedMoney(result.logisticsCostPerUnit)}</b></div><div><span>Amazon 费用/件</span><b>{formattedMoney(result.amazonFeePerUnit)}</b></div></div>
           </section>
           <section className="profit-panel return-panel">
             <div className="profit-panel-heading"><ReceiptText size={18} /><div><h2>退货损耗模型</h2><p>不可售货值损失 + 每笔退货处理成本</p></div></div>

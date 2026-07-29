@@ -36,6 +36,7 @@ const input: ProfitInput = {
   otherProductCost: 0.20,
   firstMileCost: 1.10,
   lastMileCost: 0,
+  customsDuty: 0,
   referralFee: 4.50,
   fbaFee: 4.85,
   storageFee: 0.18,
@@ -63,6 +64,12 @@ describe("profit engine", () => {
     expect(result.returnLoss).toBeCloseTo(155.25, 6);
     expect(result.unitProfit).toBeCloseTo(7.50820499, 5);
     expect(result.naturalContributionProfit).toBeGreaterThan(0);
+  });
+
+  it("includes customs duty and VAT in per-unit logistics cost", () => {
+    const result = calculateProfit({ ...input, customsDuty: 0.65 });
+    expect(result.logisticsCostPerUnit).toBeCloseTo(1.75, 6);
+    expect(result.totalLogisticsCost).toBeCloseTo(1.75 * input.targetMonthlyOrders, 6);
   });
 
   it("calculates break-even price and advertising safety lines", () => {

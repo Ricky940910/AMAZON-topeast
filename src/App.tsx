@@ -10,6 +10,7 @@ import {
   Copy,
   ExternalLink,
   Info,
+  Landmark,
   Layers3,
   PackageCheck,
   RotateCcw,
@@ -30,6 +31,7 @@ import {
 import PackingAssistant from "./PackingAssistant";
 import InventoryCostSimulator from "./InventoryCostSimulator";
 import ProfitSimulator from "./ProfitSimulator";
+import FirstMileCalculator, { type FirstMileTransfer } from "./FirstMileCalculator";
 
 const DEFAULT_INPUT: FbaInput = {
   length: 32,
@@ -67,7 +69,8 @@ function positiveNumber(value: string): number {
 }
 
 function App() {
-  const [activeModule, setActiveModule] = useState<"fba" | "packing" | "inventory" | "profit">("profit");
+  const [activeModule, setActiveModule] = useState<"fba" | "packing" | "inventory" | "profit" | "first-mile">("profit");
+  const [firstMileTransfer, setFirstMileTransfer] = useState<FirstMileTransfer | null>(null);
   const [input, setInput] = useState(DEFAULT_INPUT);
   const [copied, setCopied] = useState(false);
   const result = useMemo(() => calculateFba(input), [input]);
@@ -136,6 +139,11 @@ function App() {
           <button className={`nav-item ${activeModule === "profit" ? "active" : ""}`} type="button" onClick={() => setActiveModule("profit")}>
             <CircleDollarSign size={18} />
             <span><b>利润测算器</b><small>利润、广告与决策</small></span>
+            <ChevronRight size={16} />
+          </button>
+          <button className={`nav-item ${activeModule === "first-mile" ? "active" : ""}`} type="button" onClick={() => setActiveModule("first-mile")}>
+            <Landmark size={18} />
+            <span><b>头程费用计算</b><small>运输、附加费与利润联动</small></span>
             <ChevronRight size={16} />
           </button>
         </nav>
@@ -337,7 +345,7 @@ function App() {
             </footer>
           </section>
         </div>
-      </main> : activeModule === "packing" ? <PackingAssistant /> : activeModule === "inventory" ? <InventoryCostSimulator /> : <ProfitSimulator />}
+      </main> : activeModule === "packing" ? <PackingAssistant /> : activeModule === "inventory" ? <InventoryCostSimulator /> : activeModule === "first-mile" ? <FirstMileCalculator onTransferToProfit={(transfer) => { setFirstMileTransfer(transfer); setActiveModule("profit"); }} /> : <ProfitSimulator firstMileTransfer={firstMileTransfer} onFirstMileTransferApplied={() => setFirstMileTransfer(null)} />}
     </div>
   );
 }

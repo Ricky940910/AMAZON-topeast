@@ -95,6 +95,7 @@ export interface ProfitInput {
   otherProductCost: number;
   firstMileCost: number;
   lastMileCost: number;
+  customsDuty: number;
   referralFee: number;
   fbaFee: number;
   storageFee: number;
@@ -280,7 +281,7 @@ export function calculateProfit(input: ProfitInput): ProfitResult {
     + couponPromotionOverlapOrders * couponPromotionFinalPrice;
 
   const productCostPerUnit = positive(input.purchaseCost) + positive(input.packagingCost) + positive(input.accessoryCost) + positive(input.domesticShippingCost) + positive(input.otherProductCost);
-  const logisticsCostPerUnit = positive(input.firstMileCost) + positive(input.lastMileCost);
+  const logisticsCostPerUnit = positive(input.firstMileCost) + positive(input.lastMileCost) + positive(input.customsDuty);
   const amazonFeePerUnit = positive(input.referralFee) + positive(input.fbaFee) + positive(input.storageFee) + positive(input.otherAmazonFee);
   const totalProductCost = productCostPerUnit * monthlyOrders;
   const totalLogisticsCost = logisticsCostPerUnit * monthlyOrders;
