@@ -44,6 +44,7 @@ import {
 } from "./lib/profit";
 import type { FirstMileTransfer } from "./FirstMileCalculator";
 import { numberInputValue } from "./lib/input";
+import { getDefaultReferralCategory, getReferralFeeCategories, REFERRAL_FEE_SOURCE_URLS } from "./lib/referralFees";
 
 type ProfitTab = "product" | "cost" | "ads" | "promotion" | "simulation" | "dashboard";
 
@@ -56,6 +57,7 @@ const DEFAULT_INPUT: ProfitInput = {
   productName: "",
   asinSku: "",
   category: MARKETPLACE_CONFIG.US.categories[0],
+  referralCategory: getDefaultReferralCategory("US", MARKETPLACE_CONFIG.US.categories[0]),
   salesSite: "US",
   currency: "USD",
   lifecycle: "new",
@@ -89,6 +91,7 @@ const DEFAULT_INPUT: ProfitInput = {
   lastMileCost: 0,
   customsDuty: 0,
   referralFee: 0,
+  manualReferralFee: false,
   fbaFee: 0,
   storageFee: 0,
   otherAmazonFee: 0,
@@ -162,7 +165,8 @@ function buildSummaryRows(input: ProfitInput, result: ReturnType<typeof calculat
     { 分区: "产品", 指标: "ASIN/SKU", 数值: input.asinSku },
     { 分区: "产品", 指标: "站点", 数值: SITE_LABELS[input.salesSite] },
     { 分区: "产品", 指标: "币种", 数值: input.currency },
-    { 分区: "产品", 指标: "Amazon 顶级类目", 数值: input.category },
+    { 分区: "产品", 指标: "Amazon Browse Node", 数值: input.category },
+    { 分区: "产品", 指标: "Amazon 佣金类目", 数值: result.referralFeeCategoryLabel },
     { 分区: "销售", 指标: "Listing 售价", 数值: money(input.listingPrice) },
     { 分区: "销售", 指标: "月订单数量", 数值: result.monthlyOrders },
     { 分区: "销售", 指标: "实际成交均价", 数值: money(result.averageSellingPrice) },
@@ -175,6 +179,9 @@ function buildSummaryRows(input: ProfitInput, result: ReturnType<typeof calculat
     { 分区: "成本", 指标: "单件产品成本", 数值: money(result.productCostPerUnit) },
     { 分区: "成本", 指标: "单件物流及进口税", 数值: money(result.logisticsCostPerUnit) },
     { 分区: "成本", 指标: "单件 Amazon 费用", 数值: money(result.amazonFeePerUnit) },
+    { 分区: "成本", 指标: "单件 Referral Fee", 数值: money(result.referralFeePerUnit) },
+    { 分区: "成本", 指标: "Referral Fee 有效费率", 数值: percent(result.referralFeeEffectiveRate) },
+    { 分区: "成本", 指标: "Referral Fee 规则", 数值: input.manualReferralFee ? "手动覆盖" : result.referralFeeRuleDescription },
     { 分区: "成本", 指标: "单件退货损耗", 数值: money(result.returnLossPerUnit) },
     { 分区: "广告", 指标: "广告订单", 数值: number(result.adOrders) },
     { 分区: "广告", 指标: "广告销售额", 数值: money(result.adSalesRevenue) },
@@ -231,6 +238,9 @@ function ProfitSimulator({ firstMileTransfer, onFirstMileTransferApplied }: Prof
   const marketplace = MARKETPLACE_CONFIG[input.salesSite];
   const currencySymbol = CURRENCY_SYMBOLS[input.currency];
   const stackedPromotionsHelpUrl = getStackedPromotionsHelpUrl(input.salesSite);
+  const referralCategories = getReferralFeeCategories(input.salesSite);
+  const selectedReferralCategory = referralCategories.find((category) => category.id === input.referralCategory) ?? referralCategories[0];
+  const referralFeeSourceUrl = REFERRAL_FEE_SOURCE_URLS[input.salesSite];
 
   const formattedMoney = (value: number) => `${currencySymbol}${money(value)}`;
 
@@ -249,7 +259,12 @@ function ProfitSimulator({ firstMileTransfer, onFirstMileTransferApplied }: Prof
       salesSite,
       currency: nextMarketplace.currency,
       category: nextMarketplace.categories.includes(current.category) ? current.category : nextMarketplace.categories[0],
+      referralCategory: getDefaultReferralCategory(salesSite, nextMarketplace.categories.includes(current.category) ? current.category : nextMarketplace.categories[0]),
     }));
+  };
+
+  const updateBrowseCategory = (category: string) => {
+    setInput((current) => ({ ...current, category, referralCategory: getDefaultReferralCategory(current.salesSite, category) }));
   };
 
   useEffect(() => {
@@ -261,6 +276,7 @@ function ProfitSimulator({ firstMileTransfer, onFirstMileTransferApplied }: Prof
         salesSite: matchingSite,
         currency: MARKETPLACE_CONFIG[matchingSite].currency,
         category: MARKETPLACE_CONFIG[matchingSite].categories.includes(current.category) ? current.category : MARKETPLACE_CONFIG[matchingSite].categories[0],
+        referralCategory: getDefaultReferralCategory(matchingSite, MARKETPLACE_CONFIG[matchingSite].categories.includes(current.category) ? current.category : MARKETPLACE_CONFIG[matchingSite].categories[0]),
       } : {}),
       asinSku: firstMileTransfer.sourceSku || current.asinSku,
       firstMileCost: firstMileTransfer.logisticsCostPerUnit,
@@ -277,6 +293,8 @@ function ProfitSimulator({ firstMileTransfer, onFirstMileTransferApplied }: Prof
       `销售币种：${input.currency}`,
       `月销售额：${formattedMoney(result.netSalesRevenue)}`,
       `月订单：${result.monthlyOrders}`,
+      `佣金类目：${result.referralFeeCategoryLabel}`,
+      `单件 Referral Fee：${formattedMoney(result.referralFeePerUnit)}`,
       `单件净利润：${formattedMoney(result.unitProfit)}`,
       `利润率：${percent(result.profitMargin)}`,
       `月利润：${formattedMoney(result.netProfit)}`,
@@ -363,13 +381,14 @@ function ProfitSimulator({ firstMileTransfer, onFirstMileTransferApplied }: Prof
               <label className="profit-field"><span>产品名称</span><input value={input.productName} onChange={(event) => update("productName", event.target.value)} /></label>
               <label className="profit-field"><span>ASIN / SKU</span><input value={input.asinSku} onChange={(event) => update("asinSku", event.target.value)} /></label>
               <label className="profit-field"><span>销售站点</span><select value={input.salesSite} onChange={(event) => updateSalesSite(event.target.value as SalesSite)}>{Object.entries(SITE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-              <label className="profit-field"><span>Amazon 顶级类目节点</span><select value={input.category} onChange={(event) => update("category", event.target.value)}>{marketplace.categories.map((category) => <option key={category} value={category}>{category}</option>)}</select></label>
+              <label className="profit-field"><span>Amazon Browse Node（展示类目）</span><select value={input.category} onChange={(event) => updateBrowseCategory(event.target.value)}>{marketplace.categories.map((category) => <option key={category} value={category}>{category}</option>)}</select></label>
+              <label className="profit-field"><span>Amazon Referral Fee Category（佣金类目）</span><select value={input.referralCategory} onChange={(event) => update("referralCategory", event.target.value)}>{referralCategories.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}</select></label>
               {numberField("Listing 售价", "listingPrice", { prefix: currencySymbol })}
               {numberField("目标月销量", "targetMonthlyOrders", { suffix: "件", step: 1 })}
               {percentField("预计月增长率", "monthlyGrowthRate")}
               <label className="profit-field"><span>销售币种</span><input value={`${input.currency} (${currencySymbol})`} disabled /></label>
             </div>
-            <p className="marketplace-note"><Info size={14} /> 类目使用各站点 Amazon 顶级 Browse Node。细分类目与最终节点以上架时 Seller Central 类目树为准；切换站点不会自动换算金额汇率。</p>
+            <p className="marketplace-note"><Info size={14} /> Browse Node 仅用于商品展示分类；Amazon 官方说明佣金类目可能不同。系统会自动推荐佣金类目，也可按 Seller Central 实际 Fee Category 调整。</p>
             <div className="lifecycle-control"><span>产品生命周期</span><div><button className={input.lifecycle === "new" ? "active" : ""} type="button" onClick={() => update("lifecycle", "new" as ProductLifecycle)}>新品</button><button className={input.lifecycle === "mature" ? "active" : ""} type="button" onClick={() => update("lifecycle", "mature" as ProductLifecycle)}>成熟品</button></div></div>
           </section>
 
@@ -398,8 +417,13 @@ function ProfitSimulator({ firstMileTransfer, onFirstMileTransferApplied }: Prof
             <div className="panel-total"><span>单件产品总成本</span><strong>{formattedMoney(result.productCostPerUnit)}</strong></div>
           </section>
           <section className="profit-panel">
-            <div className="profit-panel-heading"><WalletCards size={18} /><div><h2>物流与 Amazon 费用</h2><p>FBA 费用采用上游测算结果输入</p></div></div>
-            <div className="profit-form-grid">{numberField("头程物流/件", "firstMileCost", { prefix: currencySymbol })}{numberField("关税 / VAT/件", "customsDuty", { prefix: currencySymbol })}{numberField("尾程成本/件", "lastMileCost", { prefix: currencySymbol })}{numberField("Referral Fee", "referralFee", { prefix: currencySymbol })}{numberField("FBA 配送费", "fbaFee", { prefix: currencySymbol })}{numberField("仓储费/件", "storageFee", { prefix: currencySymbol })}{numberField("其他 Amazon 费", "otherAmazonFee", { prefix: currencySymbol })}</div>
+            <div className="profit-panel-heading"><WalletCards size={18} /><div><h2>物流与 Amazon 费用</h2><p>Referral Fee 自动匹配官方类目，FBA 费用采用上游结果</p></div></div>
+            <div className="profit-form-grid">{numberField("头程物流/件", "firstMileCost", { prefix: currencySymbol })}{numberField("关税 / VAT/件", "customsDuty", { prefix: currencySymbol })}{numberField("尾程成本/件", "lastMileCost", { prefix: currencySymbol })}{numberField("FBA 配送费", "fbaFee", { prefix: currencySymbol })}{numberField("仓储费/件", "storageFee", { prefix: currencySymbol })}{numberField("其他 Amazon 费", "otherAmazonFee", { prefix: currencySymbol })}</div>
+            <div className="referral-fee-block">
+              <div className="referral-fee-heading"><div><span>Referral Fee / 销售佣金</span><b>{result.referralFeeCategoryLabel}</b></div><label className="referral-mode-toggle"><input type="checkbox" checked={input.manualReferralFee} onChange={(event) => update("manualReferralFee", event.target.checked)} /><i /><span>手动覆盖</span></label></div>
+              {input.manualReferralFee ? <div className="referral-manual-field">{numberField("手动单件佣金", "referralFee", { prefix: currencySymbol })}</div> : <div className="referral-auto-grid"><div><small>自动佣金 / 件</small><strong>{formattedMoney(result.referralFeePerUnit)}</strong></div><div><small>月佣金合计</small><strong>{formattedMoney(result.referralFeeTotal)}</strong></div><div><small>成交额有效费率</small><strong>{percent(result.referralFeeEffectiveRate)}</strong></div><div><small>最低佣金命中</small><strong>{number(result.referralFeeMinimumAppliedOrders, 0)} 单</strong></div></div>}
+              <div className="referral-rule"><span>{input.manualReferralFee ? "当前使用手动佣金，不执行官方自动匹配。" : selectedReferralCategory.ruleDescription}</span>{selectedReferralCategory.note && <small>{selectedReferralCategory.note}</small>}<a href={referralFeeSourceUrl} target="_blank" rel="noreferrer">Amazon 官方费率 <ExternalLink size={12} /></a></div>
+            </div>
             <div className="double-total"><div><span>物流及进口税/件</span><b>{formattedMoney(result.logisticsCostPerUnit)}</b></div><div><span>Amazon 费用/件</span><b>{formattedMoney(result.amazonFeePerUnit)}</b></div></div>
           </section>
           <section className="profit-panel return-panel">

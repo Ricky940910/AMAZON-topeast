@@ -1,3 +1,5 @@
+import { calculateReferralFee } from "./referralFees";
+
 export type ProductLifecycle = "new" | "mature";
 export type SalesSite = "US" | "CA" | "UK" | "DE" | "JP";
 export type CurrencyCode = "USD" | "CAD" | "GBP" | "EUR" | "JPY";
@@ -64,6 +66,7 @@ export interface ProfitInput {
   productName: string;
   asinSku: string;
   category: string;
+  referralCategory: string;
   salesSite: SalesSite;
   currency: CurrencyCode;
   lifecycle: ProductLifecycle;
@@ -97,6 +100,7 @@ export interface ProfitInput {
   lastMileCost: number;
   customsDuty: number;
   referralFee: number;
+  manualReferralFee: boolean;
   fbaFee: number;
   storageFee: number;
   otherAmazonFee: number;
@@ -145,6 +149,12 @@ export interface ProfitResult {
   productCostPerUnit: number;
   logisticsCostPerUnit: number;
   amazonFeePerUnit: number;
+  referralFeePerUnit: number;
+  referralFeeTotal: number;
+  referralFeeEffectiveRate: number;
+  referralFeeMinimumAppliedOrders: number;
+  referralFeeCategoryLabel: string;
+  referralFeeRuleDescription: string;
   totalProductCost: number;
   totalLogisticsCost: number;
   totalAmazonFees: number;
@@ -280,12 +290,30 @@ export function calculateProfit(input: ProfitInput): ProfitResult {
     + sellerPromotionOnlyOrders * (listingPrice - sellerPromotionAmountPerOrder)
     + couponPromotionOverlapOrders * couponPromotionFinalPrice;
 
+  const referralBuckets = [
+    { orders: regularOrders, price: listingPrice },
+    { orders: couponOnlyOrders, price: couponFinalPrice },
+    { orders: dealOnlyOrders, price: listingPrice - dealAmountPerOrder },
+    { orders: couponDealStackedOrders, price: stackedFinalPrice },
+    { orders: sellerPromotionOnlyOrders, price: listingPrice - sellerPromotionAmountPerOrder },
+    { orders: couponPromotionOverlapOrders, price: couponPromotionFinalPrice },
+  ];
+  const referralQuotes = referralBuckets.map((bucket) => ({ ...bucket, quote: calculateReferralFee(input.salesSite, input.referralCategory, bucket.price) }));
+  const automaticReferralFeeTotal = referralQuotes.reduce((sum, bucket) => sum + bucket.orders * bucket.quote.fee, 0);
+  const manualReferralFeePerUnit = positive(input.referralFee);
+  const referralFeeTotal = input.manualReferralFee ? manualReferralFeePerUnit * monthlyOrders : automaticReferralFeeTotal;
+  const referralFeePerUnit = monthlyOrders > 0 ? referralFeeTotal / monthlyOrders : input.manualReferralFee ? manualReferralFeePerUnit : calculateReferralFee(input.salesSite, input.referralCategory, listingPrice).fee;
+  const referralFeeEffectiveRate = netSalesRevenue > 0 ? referralFeeTotal / netSalesRevenue : 0;
+  const referralFeeMinimumAppliedOrders = input.manualReferralFee ? 0 : referralQuotes.reduce((sum, bucket) => sum + (bucket.quote.minimumApplied ? bucket.orders : 0), 0);
+  const referralFeeQuote = calculateReferralFee(input.salesSite, input.referralCategory, averageSellingPrice || listingPrice);
+
   const productCostPerUnit = positive(input.purchaseCost) + positive(input.packagingCost) + positive(input.accessoryCost) + positive(input.domesticShippingCost) + positive(input.otherProductCost);
   const logisticsCostPerUnit = positive(input.firstMileCost) + positive(input.lastMileCost) + positive(input.customsDuty);
-  const amazonFeePerUnit = positive(input.referralFee) + positive(input.fbaFee) + positive(input.storageFee) + positive(input.otherAmazonFee);
+  const fixedAmazonFeePerUnit = positive(input.fbaFee) + positive(input.storageFee) + positive(input.otherAmazonFee);
+  const amazonFeePerUnit = referralFeePerUnit + fixedAmazonFeePerUnit;
   const totalProductCost = productCostPerUnit * monthlyOrders;
   const totalLogisticsCost = logisticsCostPerUnit * monthlyOrders;
-  const totalAmazonFees = amazonFeePerUnit * monthlyOrders;
+  const totalAmazonFees = referralFeeTotal + fixedAmazonFeePerUnit * monthlyOrders;
 
   const requiredAdSpend = adSalesRevenue * clamp(input.acos);
   const adSpend = requiredAdSpend;
@@ -312,11 +340,40 @@ export function calculateProfit(input: ProfitInput): ProfitResult {
   const actualAcos = adSalesRevenue > 0 ? adSpend / adSalesRevenue : 0;
   const actualTacos = netSalesRevenue > 0 ? adSpend / netSalesRevenue : 0;
 
-  const promotionFactor = grossListingRevenue > 0 ? netSalesRevenue / grossListingRevenue : 1;
-  const adCostFactor = adSalesShare * clamp(input.acos);
-  const nonAdCostPerUnit = productCostPerUnit + logisticsCostPerUnit + amazonFeePerUnit + returnLossPerUnit;
-  const retainedRevenueFactor = promotionFactor * Math.max(0, 1 - adCostFactor);
-  const breakEvenPrice = retainedRevenueFactor > 0 ? nonAdCostPerUnit / retainedRevenueFactor : Number.POSITIVE_INFINITY;
+  const fixedCostPerUnit = productCostPerUnit + logisticsCostPerUnit + fixedAmazonFeePerUnit + returnLossPerUnit;
+  const projectedUnitProfit = (candidatePrice: number) => {
+    const couponPrice = candidatePrice * (1 - couponRate);
+    const stackedDealPrice = couponPrice * (1 - dealRate);
+    const sellerPromotionPrice = candidatePrice * (1 - sellerPromotionEffectiveRate);
+    const couponSellerPrice = couponPromotionCanStack
+      ? couponPrice * (1 - sellerPromotionEffectiveRate)
+      : candidatePrice * (1 - Math.max(couponRate, sellerPromotionEffectiveRate));
+    const projectedBuckets = [
+      { share: regularShare, price: candidatePrice },
+      { share: couponOnlyShare, price: couponPrice },
+      { share: dealOnlyShare, price: candidatePrice * (1 - dealRate) },
+      { share: couponDealOverlapShare, price: stackedDealPrice },
+      { share: sellerPromotionOnlyShare, price: sellerPromotionPrice },
+      { share: couponSellerPromotionOverlapShare, price: couponSellerPrice },
+    ];
+    const projectedRevenue = projectedBuckets.reduce((sum, bucket) => sum + bucket.share * bucket.price, 0);
+    const projectedReferralFee = input.manualReferralFee
+      ? manualReferralFeePerUnit
+      : projectedBuckets.reduce((sum, bucket) => sum + bucket.share * calculateReferralFee(input.salesSite, input.referralCategory, bucket.price).fee, 0);
+    return projectedRevenue - projectedReferralFee - fixedCostPerUnit - projectedRevenue * adSalesShare * clamp(input.acos);
+  };
+  let breakEvenPrice = Number.POSITIVE_INFINITY;
+  let upperPrice = Math.max(1, listingPrice, fixedCostPerUnit);
+  while (upperPrice < 1_000_000_000 && projectedUnitProfit(upperPrice) < 0) upperPrice *= 2;
+  if (projectedUnitProfit(upperPrice) >= 0) {
+    let lowerPrice = 0;
+    for (let iteration = 0; iteration < 70; iteration += 1) {
+      const middlePrice = (lowerPrice + upperPrice) / 2;
+      if (projectedUnitProfit(middlePrice) >= 0) upperPrice = middlePrice;
+      else lowerPrice = middlePrice;
+    }
+    breakEvenPrice = upperPrice;
+  }
   const maxAffordableAdSpend = Math.max(0, grossProfit);
   const breakEvenAcos = adSalesRevenue > 0 ? maxAffordableAdSpend / adSalesRevenue : Number.POSITIVE_INFINITY;
   const breakEvenTacos = netSalesRevenue > 0 ? maxAffordableAdSpend / netSalesRevenue : Number.POSITIVE_INFINITY;
@@ -330,6 +387,8 @@ export function calculateProfit(input: ProfitInput): ProfitResult {
   if (clamp(input.acos) >= breakEvenAcos && Number.isFinite(breakEvenAcos)) warnings.push("当前 ACOS 已达到或超过盈亏平衡 ACOS。" );
   if (clamp(input.targetTacos) > 0 && actualTacos > clamp(input.targetTacos)) warnings.push("预计 TACOS 高于目标 TACOS，请降低广告成本或提升自然销售占比。" );
   if (monthlyOrders === 0) warnings.push("目标销量为 0，利润和广告效率指标仅供结构检查。" );
+  if (!input.manualReferralFee) warnings.push(`Referral Fee 已按 ${referralFeeQuote.categoryLabel} 官方规则及各促销订单实际成交价自动计算。`);
+  if (!input.manualReferralFee) warnings.push("佣金基数当前使用产品实际成交价；如买家另付配送费或礼品包装费，应在账单复核时计入 Amazon total sales price。" );
   warnings.push("Amazon 官方规则：Coupon 与秒杀/Z 划算始终自动叠加，折扣依次应用而不是百分比相加。" );
   if (couponShare > 0 && dealShare > 0) warnings.push("叠加订单量按 Coupon 订单占比 × Deal 订单占比估算；实际交集以 Seller Central 订单数据为准。" );
   if (input.sellerPromotionEnabled) warnings.push(couponPromotionCanStack
@@ -380,6 +439,12 @@ export function calculateProfit(input: ProfitInput): ProfitResult {
     productCostPerUnit,
     logisticsCostPerUnit,
     amazonFeePerUnit,
+    referralFeePerUnit,
+    referralFeeTotal,
+    referralFeeEffectiveRate,
+    referralFeeMinimumAppliedOrders,
+    referralFeeCategoryLabel: referralFeeQuote.categoryLabel,
+    referralFeeRuleDescription: referralFeeQuote.ruleDescription,
     totalProductCost,
     totalLogisticsCost,
     totalAmazonFees,

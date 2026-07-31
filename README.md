@@ -20,6 +20,7 @@
 - 最多 24 个月库存递减推演和继续销售/促销/移除/清货建议
 - 库存成本汇总复制、Excel/CSV 导出与打印
 - 产品、物流、Amazon费用、退货、广告和促销成本模型
+- 美国、加拿大、英国、德国、日本站 Referral Fee 类目自动匹配、分段费率与最低佣金
 - 广告订单/自然订单拆分、ACOS/TACOS、预算覆盖与广告安全线
 - 盈亏平衡售价、盈亏平衡 ACOS/TACOS 与最大安全 CPC
 - 保守/正常/激进三种利润情景模拟和 SKU 运营评级
@@ -40,5 +41,10 @@ pnpm dev
 - [Amazon Monthly inventory storage fees](https://sellercentral.amazon.com/help/hub/reference/external/G3EDYEF6KUCFQTNM)
 - [Amazon 2026 US fee changes](https://sellercentral.amazon.com/help/hub/reference/external/G201411300)
 - [Amazon Removal and liquidation fees](https://sellercentral.amazon.com/help/hub/reference/external/GZ5Q2VW5WF4JWRGC)
+- [Amazon US selling and referral fees](https://sell.amazon.com/pricing)
+- [Amazon Canada selling and referral fees](https://sell.amazon.ca/pricing)
+- [Amazon UK selling and referral fees](https://sell.amazon.co.uk/pricing)
+- [Amazon Germany selling and referral fees](https://sell.amazon.de/preisgestaltung)
+- [Amazon Japan selling and referral fees](https://sell.amazon.co.jp/pricing)
 
 本工具用于运营预估。Amazon 实际账单以 Seller Central 的产品测量数据和计费结果为准。

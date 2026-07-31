@@ -712,6 +712,27 @@ button { letter-spacing: 0; }
 .double-total span, .double-total b { display: block; }
 .double-total span { color: #7b8680; font-size: 8px; }
 .double-total b { margin-top: 5px; color: #294f3d; font-size: 17px; }
+.referral-fee-block { margin: 0 18px 18px; overflow: hidden; background: #f7faf8; border: 1px solid #d8e2dc; border-radius: 5px; }
+.referral-fee-heading { min-height: 55px; padding: 11px 13px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid #dfe7e2; }
+.referral-fee-heading span, .referral-fee-heading b { display: block; }
+.referral-fee-heading span { color: #7a867f; font-size: 7px; }
+.referral-fee-heading b { margin-top: 4px; color: #294f3d; font-size: 10px; }
+.referral-mode-toggle { display: flex; align-items: center; gap: 7px; color: #66736c; font-size: 8px; font-weight: 700; cursor: pointer; }
+.referral-mode-toggle input { position: absolute; opacity: 0; }
+.referral-mode-toggle i { position: relative; width: 34px; height: 20px; flex: 0 0 auto; background: #bbc5bf; border-radius: 20px; transition: .2s; }
+.referral-mode-toggle i::after { content: ""; position: absolute; width: 14px; height: 14px; left: 3px; top: 3px; background: #fff; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: .2s; }
+.referral-mode-toggle input:checked + i { background: #397656; }
+.referral-mode-toggle input:checked + i::after { transform: translateX(14px); }
+.referral-auto-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.referral-auto-grid > div { min-width: 0; padding: 11px 12px; border-right: 1px solid #dfe7e2; }
+.referral-auto-grid > div:last-child { border-right: 0; }
+.referral-auto-grid small, .referral-auto-grid strong { display: block; }
+.referral-auto-grid small { color: #7d8882; font-size: 7px; }
+.referral-auto-grid strong { margin-top: 5px; color: #263b31; font-size: 12px; overflow-wrap: anywhere; }
+.referral-manual-field .profit-field { padding: 12px 13px; }
+.referral-rule { padding: 10px 13px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 5px 12px; color: #647169; background: #fff; border-top: 1px solid #dfe7e2; font-size: 8px; line-height: 1.45; }
+.referral-rule small { grid-column: 1 / -1; color: #8b6b42; }
+.referral-rule a { display: inline-flex; align-items: center; gap: 4px; color: #315f47; font-weight: 700; text-decoration: none; white-space: nowrap; }
 .return-result-grid { margin: 0 18px 18px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid #dfe5e1; border-radius: 5px; }
 .return-result-grid > div { padding: 12px; border-right: 1px solid #e3e8e4; }
 .return-result-grid > div:last-child { border-right: 0; }
@@ -906,6 +927,9 @@ button { letter-spacing: 0; }
   .lifecycle-control { align-items: flex-start; flex-direction: column; }
   .lifecycle-control > div { width: 100%; grid-template-columns: repeat(2, 1fr); }
   .double-total, .promotion-summary, .promotion-summary.three { grid-template-columns: 1fr; }
+  .referral-auto-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .referral-auto-grid > div:nth-child(2) { border-right: 0; }
+  .referral-auto-grid > div:nth-child(-n+2) { border-bottom: 1px solid #dfe7e2; }
   .double-total > div, .promotion-summary > div { border-right: 0; border-bottom: 1px solid #dbe2dd; }
   .double-total > div:last-child, .promotion-summary > div:last-child { border-bottom: 0; }
   .scenario-intro { align-items: flex-start; flex-direction: column; }

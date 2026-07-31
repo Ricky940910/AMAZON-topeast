@@ -5,6 +5,7 @@ const input: ProfitInput = {
   productName: "示例产品",
   asinSku: "SKU-PROFIT",
   category: "Home & Kitchen",
+  referralCategory: "home-kitchen",
   salesSite: "US",
   currency: "USD",
   lifecycle: "new",
@@ -38,6 +39,7 @@ const input: ProfitInput = {
   lastMileCost: 0,
   customsDuty: 0,
   referralFee: 4.50,
+  manualReferralFee: true,
   fbaFee: 4.85,
   storageFee: 0.18,
   otherAmazonFee: 0.12,
@@ -64,6 +66,32 @@ describe("profit engine", () => {
     expect(result.returnLoss).toBeCloseTo(155.25, 6);
     expect(result.unitProfit).toBeCloseTo(7.50820499, 5);
     expect(result.naturalContributionProfit).toBeGreaterThan(0);
+  });
+
+  it("automatically calculates category referral fees from promotional order prices", () => {
+    const result = calculateProfit({ ...input, referralFee: 0, manualReferralFee: false });
+    expect(result.referralFeeTotal).toBeCloseTo(3889.125, 6);
+    expect(result.referralFeePerUnit).toBeCloseTo(4.32125, 6);
+    expect(result.referralFeeEffectiveRate).toBeCloseTo(result.referralFeeTotal / result.netSalesRevenue, 6);
+    expect(result.amazonFeePerUnit).toBeCloseTo(result.referralFeePerUnit + input.fbaFee + input.storageFee + input.otherAmazonFee, 6);
+  });
+
+  it("recalculates referral fee tiers after discounts change the transaction price", () => {
+    const result = calculateProfit({
+      ...input,
+      listingPrice: 11,
+      targetMonthlyOrders: 100,
+      referralCategory: "beauty-health",
+      referralFee: 0,
+      manualReferralFee: false,
+      couponRate: 0.20,
+      couponOrderShare: 1,
+      dealRate: 0,
+      dealOrderShare: 0,
+    });
+    expect(result.averageSellingPrice).toBeCloseTo(8.8, 6);
+    expect(result.referralFeePerUnit).toBeCloseTo(0.70, 6);
+    expect(result.referralFeeEffectiveRate).toBeCloseTo(0.70 / 8.8, 6);
   });
 
   it("includes customs duty and VAT in per-unit logistics cost", () => {
