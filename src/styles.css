@@ -14,6 +14,8 @@ button, a, input, select { -webkit-tap-highlight-color: transparent; }
 button { letter-spacing: 0; }
 
 .app-shell { min-height: 100vh; display: grid; grid-template-columns: 246px minmax(0, 1fr); }
+.module-screen { min-width: 0; }
+.module-screen[hidden] { display: none; }
 .sidebar { position: sticky; top: 0; height: 100vh; padding: 28px 18px 20px; display: flex; flex-direction: column; color: #f5f7f4; background: #16211d; border-right: 1px solid #2d3934; }
 .brand { display: flex; align-items: center; gap: 11px; padding: 0 8px 28px; border-bottom: 1px solid #34403b; }
 .brand-mark { width: 38px; height: 38px; display: grid; place-items: center; color: #16211d; background: #d9a441; border-radius: 6px; }

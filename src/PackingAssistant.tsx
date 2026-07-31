@@ -41,6 +41,7 @@ import {
   type PackingMatrixMode,
   type ShipmentRow,
 } from "./lib/packing";
+import { numberInputValue } from "./lib/input";
 
 type PackingView = "single" | "multi" | "replenishment";
 type PackingMode = "average" | "capacity" | "auto";
@@ -59,26 +60,20 @@ interface SingleInput {
 }
 
 const DEFAULT_SINGLE: SingleInput = {
-  sku: "SKU001",
-  totalQty: 257,
-  cartonCount: 8,
-  qtyPerCarton: 30,
-  productWeight: 0.65,
-  maxCartonWeight: 22,
-  productDimensions: [35, 25, 8],
-  cartonDimensions: [60, 40, 40],
+  sku: "",
+  totalQty: 0,
+  cartonCount: 0,
+  qtyPerCarton: 0,
+  productWeight: 0,
+  maxCartonWeight: 0,
+  productDimensions: [0, 0, 0],
+  cartonDimensions: [0, 0, 0],
   useWeightLimit: false,
   useDimensionLimit: false,
 };
 
 const DEFAULT_MULTI: MultiSkuInput[] = [
-  { id: "sku-a", sku: "A", totalQty: 20, cartonCount: 5, productWeight: 0, productDimensions: [0, 0, 0] },
-  { id: "sku-b", sku: "B", totalQty: 20, cartonCount: 5, productWeight: 0, productDimensions: [0, 0, 0] },
-  { id: "sku-d", sku: "D", totalQty: 15, cartonCount: 5, productWeight: 0, productDimensions: [0, 0, 0] },
-  { id: "sku-c", sku: "C", totalQty: 18, cartonCount: 6, productWeight: 0, productDimensions: [0, 0, 0] },
-  { id: "sku-e", sku: "E", totalQty: 18, cartonCount: 6, productWeight: 0, productDimensions: [0, 0, 0] },
-  { id: "sku-f", sku: "F", totalQty: 14, cartonCount: 7, productWeight: 0, productDimensions: [0, 0, 0] },
-  { id: "sku-s", sku: "S", totalQty: 14, cartonCount: 7, productWeight: 0, productDimensions: [0, 0, 0] },
+  { id: "sku-1", sku: "", totalQty: 0, cartonCount: 0, productWeight: 0, productDimensions: [0, 0, 0] },
 ];
 
 const LIMIT_LABELS = {
@@ -148,9 +143,7 @@ function summarizeAllocation(plan: PackingMatrixPlan, rowIndex: number): string 
 
 async function downloadImportTemplate(): Promise<void> {
   const XLSX = await import("xlsx");
-  const worksheet = XLSX.utils.json_to_sheet([
-    { SKU: "SKU001", 数量: 257, 重量: 0.65, 长: 35, 宽: 25, 高: 8, 箱数: 8 },
-  ]);
+  const worksheet = XLSX.utils.aoa_to_sheet([["SKU", "数量", "重量", "长", "宽", "高", "箱数"]]);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Import Template");
   XLSX.writeFile(workbook, "Packing_Import_Template.xlsx");
@@ -162,13 +155,13 @@ function PackingAssistant() {
   const [single, setSingle] = useState(DEFAULT_SINGLE);
   const [multiRows, setMultiRows] = useState(DEFAULT_MULTI);
   const [matrixMode, setMatrixMode] = useState<PackingMatrixMode>("grouped");
-  const [groupInput, setGroupInput] = useState("5,5,6,7");
-  const [cleanDefaultCartons, setCleanDefaultCartons] = useState(5);
-  const [multiMaxWeight, setMultiMaxWeight] = useState(22);
-  const [multiCartonDimensions, setMultiCartonDimensions] = useState<Dimensions>([60, 40, 40]);
-  const [dailySales, setDailySales] = useState(25);
-  const [transitDays, setTransitDays] = useState(30);
-  const [safetyDays, setSafetyDays] = useState(15);
+  const [groupInput, setGroupInput] = useState("");
+  const [cleanDefaultCartons, setCleanDefaultCartons] = useState(0);
+  const [multiMaxWeight, setMultiMaxWeight] = useState(0);
+  const [multiCartonDimensions, setMultiCartonDimensions] = useState<Dimensions>([0, 0, 0]);
+  const [dailySales, setDailySales] = useState(0);
+  const [transitDays, setTransitDays] = useState(0);
+  const [safetyDays, setSafetyDays] = useState(0);
   const [copied, setCopied] = useState(false);
   const [matrixCopied, setMatrixCopied] = useState(false);
   const [importMessage, setImportMessage] = useState("");
@@ -264,10 +257,13 @@ function PackingAssistant() {
     window.setTimeout(() => setMatrixCopied(false), 1600);
   };
 
-  const loadPackingExample = () => {
-    setMultiRows(DEFAULT_MULTI.map((row) => ({ ...row, productDimensions: [...row.productDimensions] as Dimensions })));
+  const clearMultiPacking = () => {
+    setMultiRows(DEFAULT_MULTI.map((row) => ({ ...row, id: createId(), productDimensions: [...row.productDimensions] as Dimensions })));
     setMatrixMode("grouped");
-    setGroupInput("5,5,6,7");
+    setGroupInput("");
+    setCleanDefaultCartons(0);
+    setMultiMaxWeight(0);
+    setMultiCartonDimensions([0, 0, 0]);
   };
 
   const importWorkbook = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -340,7 +336,7 @@ function PackingAssistant() {
             <section className="packing-config-panel">
               <div className="panel-heading">
                 <div><span>01</span><h2>装箱参数</h2></div>
-                <button className="icon-button" type="button" onClick={() => setSingle(DEFAULT_SINGLE)} title="恢复示例数据"><RotateCcw size={17} /></button>
+                <button className="icon-button" type="button" onClick={() => setSingle(DEFAULT_SINGLE)} title="清空数据"><RotateCcw size={17} /></button>
               </div>
 
               <div className="packing-mode-control">
@@ -351,9 +347,9 @@ function PackingAssistant() {
 
               <div className="packing-form">
                 <label className="field-label"><span>SKU</span><input value={single.sku} onChange={(event) => setSingle((current) => ({ ...current, sku: event.target.value }))} /></label>
-                <label className="field-label"><span>总数量</span><input type="number" min="1" step="1" value={single.totalQty} onChange={(event) => setSingle((current) => ({ ...current, totalQty: integer(event.target.value) }))} /></label>
-                {mode === "average" && <label className="field-label"><span>计划箱数</span><input type="number" min="1" step="1" value={single.cartonCount} onChange={(event) => setSingle((current) => ({ ...current, cartonCount: integer(event.target.value) }))} /></label>}
-                {mode === "capacity" && <label className="field-label"><span>每箱数量</span><input type="number" min="1" step="1" value={single.qtyPerCarton} onChange={(event) => setSingle((current) => ({ ...current, qtyPerCarton: integer(event.target.value) }))} /></label>}
+                <label className="field-label"><span>总数量</span><input type="number" min="1" step="1" value={numberInputValue(single.totalQty)} onChange={(event) => setSingle((current) => ({ ...current, totalQty: integer(event.target.value) }))} /></label>
+                {mode === "average" && <label className="field-label"><span>计划箱数</span><input type="number" min="1" step="1" value={numberInputValue(single.cartonCount)} onChange={(event) => setSingle((current) => ({ ...current, cartonCount: integer(event.target.value) }))} /></label>}
+                {mode === "capacity" && <label className="field-label"><span>每箱数量</span><input type="number" min="1" step="1" value={numberInputValue(single.qtyPerCarton)} onChange={(event) => setSingle((current) => ({ ...current, qtyPerCarton: integer(event.target.value) }))} /></label>}
               </div>
 
               <div className="packing-limit-block">
@@ -362,8 +358,8 @@ function PackingAssistant() {
                   <span><Scale size={15} /><b>启用箱重限制</b><small>自动校验或限制每箱件数</small></span>
                 </label>
                 <div className="packing-form two">
-                  <label className="field-label"><span>单件重量（kg）</span><input type="number" min="0" step="0.001" value={single.productWeight} onChange={(event) => setSingle((current) => ({ ...current, productWeight: numeric(event.target.value) }))} /></label>
-                  <label className="field-label"><span>最大箱重（kg）</span><input disabled={!single.useWeightLimit} type="number" min="0" step="0.01" value={single.maxCartonWeight} onChange={(event) => setSingle((current) => ({ ...current, maxCartonWeight: numeric(event.target.value) }))} /></label>
+                  <label className="field-label"><span>单件重量（kg）</span><input type="number" min="0" step="0.001" value={numberInputValue(single.productWeight)} onChange={(event) => setSingle((current) => ({ ...current, productWeight: numeric(event.target.value) }))} /></label>
+                  <label className="field-label"><span>最大箱重（kg）</span><input disabled={!single.useWeightLimit} type="number" min="0" step="0.01" value={numberInputValue(single.maxCartonWeight)} onChange={(event) => setSingle((current) => ({ ...current, maxCartonWeight: numeric(event.target.value) }))} /></label>
                 </div>
               </div>
 
@@ -375,11 +371,11 @@ function PackingAssistant() {
                 <div>
                   <div className="dimension-input-row">
                     <span>产品尺寸（cm）</span>
-                    {single.productDimensions.map((value, index) => <input key={`product-${index}`} aria-label={`产品${["长", "宽", "高"][index]}`} type="number" min="0" step="0.01" value={value} onChange={(event) => updateSingleDimension("productDimensions", index, event.target.value)} />)}
+                    {single.productDimensions.map((value, index) => <input key={`product-${index}`} aria-label={`产品${["长", "宽", "高"][index]}`} type="number" min="0" step="0.01" value={numberInputValue(value)} onChange={(event) => updateSingleDimension("productDimensions", index, event.target.value)} />)}
                   </div>
                   <div className="dimension-input-row">
                     <span>纸箱尺寸（cm）</span>
-                    {single.cartonDimensions.map((value, index) => <input key={`carton-${index}`} aria-label={`纸箱${["长", "宽", "高"][index]}`} type="number" min="0" step="0.01" value={value} onChange={(event) => updateSingleDimension("cartonDimensions", index, event.target.value)} />)}
+                    {single.cartonDimensions.map((value, index) => <input key={`carton-${index}`} aria-label={`纸箱${["长", "宽", "高"][index]}`} type="number" min="0" step="0.01" value={numberInputValue(value)} onChange={(event) => updateSingleDimension("cartonDimensions", index, event.target.value)} />)}
                   </div>
                 </div>
               </div>
@@ -458,8 +454,8 @@ function PackingAssistant() {
               <div className="toolbar-actions">
                 <input ref={fileInputRef} hidden type="file" accept=".xlsx,.xls,.csv" onChange={importWorkbook} />
                 <button type="button" onClick={() => fileInputRef.current?.click()}><Upload size={15} /> 导入 Excel</button>
-                <button type="button" onClick={() => setMultiRows((rows) => [...rows, { id: createId(), sku: `SKU${String(rows.length + 1).padStart(3, "0")}`, totalQty: 1, cartonCount: 0, productWeight: 0, productDimensions: [0, 0, 0] }])}><Plus size={15} /> 添加 SKU</button>
-                <button type="button" onClick={loadPackingExample}><RotateCcw size={15} /> 图片示例</button>
+                <button type="button" onClick={() => setMultiRows((rows) => [...rows, { id: createId(), sku: "", totalQty: 0, cartonCount: 0, productWeight: 0, productDimensions: [0, 0, 0] }])}><Plus size={15} /> 添加 SKU</button>
+                <button type="button" onClick={clearMultiPacking}><RotateCcw size={15} /> 清空</button>
               </div>
             </section>
             {importMessage && <div className={`import-message ${importMessage.startsWith("导入失败") ? "error" : ""}`}><Info size={14} />{importMessage}</div>}
@@ -471,11 +467,11 @@ function PackingAssistant() {
                 <button className={matrixMode === "clean" ? "active" : ""} type="button" onClick={() => setMatrixMode("clean")}><PackagePlus size={16} /><span><b>清装</b><small>参考方案 3</small></span></button>
               </div>
               <div className="multi-settings">
-                {matrixMode === "grouped" && <label className="group-input">箱组结构<input value={groupInput} placeholder="5,5,6,7" onChange={(event) => setGroupInput(event.target.value)} /><small>每个数字代表一种重复箱型的箱数</small></label>}
+                {matrixMode === "grouped" && <label className="group-input">箱组结构<input value={groupInput} placeholder="用逗号分隔" onChange={(event) => setGroupInput(event.target.value)} /><small>每个数字代表一种重复箱型的箱数</small></label>}
                 {matrixMode === "identical" && <div className="matrix-auto-note"><Sparkles size={15} /><span>系统自动以全部 SKU 数量的最大公约数作为箱数。</span></div>}
-                {matrixMode === "clean" && <label>默认每 SKU 箱数<input type="number" min="1" step="1" value={cleanDefaultCartons} onChange={(event) => setCleanDefaultCartons(integer(event.target.value))} /></label>}
-                <label>最大箱重（kg）<input type="number" min="0" step="0.01" value={multiMaxWeight} onChange={(event) => setMultiMaxWeight(numeric(event.target.value))} /></label>
-                <div className="multi-carton-size"><span>共用纸箱尺寸（cm）</span>{multiCartonDimensions.map((value, index) => <input key={index} aria-label={`多SKU纸箱${["长", "宽", "高"][index]}`} type="number" min="0" step="0.01" value={value} onChange={(event) => setMultiCartonDimensions((dimensions) => { const next = [...dimensions] as Dimensions; next[index] = numeric(event.target.value); return next; })} />)}</div>
+                {matrixMode === "clean" && <label>默认每 SKU 箱数<input type="number" min="1" step="1" value={numberInputValue(cleanDefaultCartons)} onChange={(event) => setCleanDefaultCartons(integer(event.target.value))} /></label>}
+                <label>最大箱重（kg）<input type="number" min="0" step="0.01" value={numberInputValue(multiMaxWeight)} onChange={(event) => setMultiMaxWeight(numeric(event.target.value))} /></label>
+                <div className="multi-carton-size"><span>共用纸箱尺寸（cm）</span>{multiCartonDimensions.map((value, index) => <input key={index} aria-label={`多SKU纸箱${["长", "宽", "高"][index]}`} type="number" min="0" step="0.01" value={numberInputValue(value)} onChange={(event) => setMultiCartonDimensions((dimensions) => { const next = [...dimensions] as Dimensions; next[index] = numeric(event.target.value); return next; })} />)}</div>
               </div>
             </section>
 
@@ -485,10 +481,10 @@ function PackingAssistant() {
                   <thead><tr><th>SKU</th><th>备货量</th><th>清装箱数</th><th>单件重量 kg</th><th>产品尺寸 cm</th><th>分配摘要</th><th /></tr></thead>
                   <tbody>{multiRows.map((row, rowIndex) => <tr key={row.id}>
                       <td><input value={row.sku} onChange={(event) => updateMulti(row.id, { sku: event.target.value })} /></td>
-                      <td><input type="number" min="1" step="1" value={row.totalQty} onChange={(event) => updateMulti(row.id, { totalQty: integer(event.target.value) })} /></td>
-                      <td><input disabled={matrixMode !== "clean"} type="number" min="0" step="1" value={row.cartonCount} onChange={(event) => updateMulti(row.id, { cartonCount: integer(event.target.value) })} /></td>
-                      <td><input type="number" min="0" step="0.001" value={row.productWeight} onChange={(event) => updateMulti(row.id, { productWeight: numeric(event.target.value) })} /></td>
-                      <td><div className="mini-dimensions">{row.productDimensions.map((value, index) => <input key={index} aria-label={`${row.sku}产品${["长", "宽", "高"][index]}`} type="number" min="0" step="0.01" value={value} onChange={(event) => updateMultiDimension(row.id, index, event.target.value)} />)}</div></td>
+                      <td><input type="number" min="1" step="1" value={numberInputValue(row.totalQty)} onChange={(event) => updateMulti(row.id, { totalQty: integer(event.target.value) })} /></td>
+                      <td><input disabled={matrixMode !== "clean"} type="number" min="0" step="1" value={numberInputValue(row.cartonCount)} onChange={(event) => updateMulti(row.id, { cartonCount: integer(event.target.value) })} /></td>
+                      <td><input type="number" min="0" step="0.001" value={numberInputValue(row.productWeight)} onChange={(event) => updateMulti(row.id, { productWeight: numeric(event.target.value) })} /></td>
+                      <td><div className="mini-dimensions">{row.productDimensions.map((value, index) => <input key={index} aria-label={`${row.sku || "SKU"}产品${["长", "宽", "高"][index]}`} type="number" min="0" step="0.01" value={numberInputValue(value)} onChange={(event) => updateMultiDimension(row.id, index, event.target.value)} />)}</div></td>
                       <td><div className="packing-sequence"><b>{multiPlan.rows[rowIndex]?.packedQty ?? 0} / {row.totalQty} 件</b><span>{summarizeAllocation(multiPlan, rowIndex)}</span></div></td>
                       <td><button className="delete-row" type="button" title="删除 SKU" onClick={() => setMultiRows((rows) => rows.filter((item) => item.id !== row.id))}><Trash2 size={15} /></button></td>
                     </tr>)}</tbody>
@@ -530,9 +526,9 @@ function PackingAssistant() {
             <section className="replenishment-form">
               <div className="panel-heading"><div><span>01</span><h2>销量与时效</h2></div></div>
               <div className="replenishment-fields">
-                <label className="field-label"><span>日销量</span><input type="number" min="0" step="0.01" value={dailySales} onChange={(event) => setDailySales(numeric(event.target.value))} /></label>
-                <label className="field-label"><span>运输天数</span><input type="number" min="0" step="1" value={transitDays} onChange={(event) => setTransitDays(integer(event.target.value))} /></label>
-                <label className="field-label"><span>安全库存天数</span><input type="number" min="0" step="1" value={safetyDays} onChange={(event) => setSafetyDays(integer(event.target.value))} /></label>
+                <label className="field-label"><span>日销量</span><input type="number" min="0" step="0.01" value={numberInputValue(dailySales)} onChange={(event) => setDailySales(numeric(event.target.value))} /></label>
+                <label className="field-label"><span>运输天数</span><input type="number" min="0" step="1" value={numberInputValue(transitDays)} onChange={(event) => setTransitDays(integer(event.target.value))} /></label>
+                <label className="field-label"><span>安全库存天数</span><input type="number" min="0" step="1" value={numberInputValue(safetyDays)} onChange={(event) => setSafetyDays(integer(event.target.value))} /></label>
               </div>
               <div className="formula-box"><span>建议数量</span><b>{format(dailySales, 2)} × ({transitDays} + {safetyDays})</b></div>
             </section>

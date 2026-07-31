@@ -43,6 +43,7 @@ import {
   type SellerPromotionType,
 } from "./lib/profit";
 import type { FirstMileTransfer } from "./FirstMileCalculator";
+import { numberInputValue } from "./lib/input";
 
 type ProfitTab = "product" | "cost" | "ads" | "promotion" | "simulation" | "dashboard";
 
@@ -52,48 +53,48 @@ interface ProfitSimulatorProps {
 }
 
 const DEFAULT_INPUT: ProfitInput = {
-  productName: "示例新品",
-  asinSku: "SKU-PROFIT-001",
-  category: "Home & Kitchen",
+  productName: "",
+  asinSku: "",
+  category: MARKETPLACE_CONFIG.US.categories[0],
   salesSite: "US",
   currency: "USD",
   lifecycle: "new",
-  listingPrice: 29.99,
-  targetMonthlyOrders: 900,
-  monthlyGrowthRate: 0.08,
-  couponRate: 0.10,
-  couponOrderShare: 0.25,
-  dealRate: 0.15,
-  dealOrderShare: 0.10,
+  listingPrice: 0,
+  targetMonthlyOrders: 0,
+  monthlyGrowthRate: 0,
+  couponRate: 0,
+  couponOrderShare: 0,
+  dealRate: 0,
+  dealOrderShare: 0,
   dealType: "lightning-deal",
   sellerPromotionEnabled: false,
   sellerPromotionType: "percentage-off",
-  sellerPromotionRate: 0.10,
-  sellerPromotionOrderShare: 0.10,
-  sellerPromotionBuyQuantity: 2,
-  sellerPromotionFreeQuantity: 1,
+  sellerPromotionRate: 0,
+  sellerPromotionOrderShare: 0,
+  sellerPromotionBuyQuantity: 0,
+  sellerPromotionFreeQuantity: 0,
   couponPromotionStacking: "prevent",
-  adOrderShare: 0.45,
-  adSalesShare: 0.48,
-  acos: 0.28,
-  targetTacos: 0.15,
-  cpc: 1.10,
-  adBudget: 4000,
-  purchaseCost: 5.20,
-  packagingCost: 0.45,
-  accessoryCost: 0.30,
-  domesticShippingCost: 0.35,
-  otherProductCost: 0.20,
-  firstMileCost: 1.10,
+  adOrderShare: 0,
+  adSalesShare: 0,
+  acos: 0,
+  targetTacos: 0,
+  cpc: 0,
+  adBudget: 0,
+  purchaseCost: 0,
+  packagingCost: 0,
+  accessoryCost: 0,
+  domesticShippingCost: 0,
+  otherProductCost: 0,
+  firstMileCost: 0,
   lastMileCost: 0,
   customsDuty: 0,
-  referralFee: 4.50,
-  fbaFee: 4.85,
-  storageFee: 0.18,
-  otherAmazonFee: 0.12,
-  returnRate: 0.06,
-  unsellableRate: 0.35,
-  returnProcessingCost: 0.60,
+  referralFee: 0,
+  fbaFee: 0,
+  storageFee: 0,
+  otherAmazonFee: 0,
+  returnRate: 0,
+  unsellableRate: 0,
+  returnProcessingCost: 0,
 };
 
 const GRADE_LABELS: Record<ProfitGrade, string> = {
@@ -296,7 +297,7 @@ function ProfitSimulator({ firstMileTransfer, onFirstMileTransferApplied }: Prof
       <span>{label}</span>
       <div className="profit-input-wrap">
         {options?.prefix && <b>{options.prefix}</b>}
-        <input type="number" min="0" step={options?.step ?? 0.01} value={input[key] as number} onChange={(event) => update(key, positive(event.target.value) as never)} />
+        <input type="number" min="0" step={options?.step ?? 0.01} value={numberInputValue(input[key] as number)} onChange={(event) => update(key, positive(event.target.value) as never)} />
         {options?.suffix && <em>{options.suffix}</em>}
       </div>
     </label>
@@ -305,7 +306,7 @@ function ProfitSimulator({ firstMileTransfer, onFirstMileTransferApplied }: Prof
   const percentField = (label: string, key: keyof ProfitInput) => (
     <label className="profit-field">
       <span>{label}</span>
-      <div className="profit-input-wrap suffix"><input type="number" min="0" max="100" step="0.1" value={number((input[key] as number) * 100, 1)} onChange={(event) => updatePercent(key, event.target.value)} /><em>%</em></div>
+      <div className="profit-input-wrap suffix"><input type="number" min="0" max="100" step="0.1" value={numberInputValue((input[key] as number) * 100)} onChange={(event) => updatePercent(key, event.target.value)} /><em>%</em></div>
     </label>
   );
 
@@ -349,7 +350,7 @@ function ProfitSimulator({ firstMileTransfer, onFirstMileTransferApplied }: Prof
             <small>运营评级</small><strong>{GRADE_LABELS[result.grade]}</strong><span>{result.recommendation}</span>
           </div>
           <div className="profit-hero-actions">
-            <button type="button" onClick={() => setInput(DEFAULT_INPUT)} title="恢复示例数据"><RotateCcw size={15} /></button>
+            <button type="button" onClick={() => setInput(DEFAULT_INPUT)} title="清空数据"><RotateCcw size={15} /></button>
             <button type="button" onClick={copySummary}>{copied ? <Check size={15} /> : <Copy size={15} />}{copied ? "已复制" : "复制"}</button>
             <button type="button" onClick={() => exportProfitCsv(input)}><Download size={15} /> CSV</button>
           </div>

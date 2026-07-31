@@ -16,15 +16,15 @@ export interface TransportModeConfig {
 }
 
 export const TRANSPORT_MODE_CONFIG: Record<TransportMode, TransportModeConfig> = {
-  "sea-fast": { label: "海运快船", basis: "volume", defaultRatePerKg: 0, defaultRatePerCbm: 980, defaultMinimum: 1, defaultIncrement: 0.01, defaultDivisor: 6000, unitLabel: "CBM" },
-  "sea-slow": { label: "海运慢船", basis: "volume", defaultRatePerKg: 0, defaultRatePerCbm: 620, defaultMinimum: 1, defaultIncrement: 0.01, defaultDivisor: 6000, unitLabel: "CBM" },
-  "air-delivery": { label: "空派", basis: "weight", defaultRatePerKg: 42, defaultRatePerCbm: 0, defaultMinimum: 21, defaultIncrement: 0.5, defaultDivisor: 6000, unitLabel: "KG" },
-  air: { label: "空运", basis: "weight", defaultRatePerKg: 35, defaultRatePerCbm: 0, defaultMinimum: 45, defaultIncrement: 0.5, defaultDivisor: 6000, unitLabel: "KG" },
-  express: { label: "国际快递", basis: "weight", defaultRatePerKg: 52, defaultRatePerCbm: 0, defaultMinimum: 0.5, defaultIncrement: 0.5, defaultDivisor: 5000, unitLabel: "KG" },
-  rail: { label: "铁路", basis: "volume", defaultRatePerKg: 0, defaultRatePerCbm: 1500, defaultMinimum: 1, defaultIncrement: 0.01, defaultDivisor: 6000, unitLabel: "CBM" },
-  "truck-eu": { label: "卡航（欧洲）", basis: "volume", defaultRatePerKg: 0, defaultRatePerCbm: 1900, defaultMinimum: 1, defaultIncrement: 0.01, defaultDivisor: 6000, unitLabel: "CBM" },
-  "agl-air": { label: "AGL 空运", basis: "weight", defaultRatePerKg: 0, defaultRatePerCbm: 0, defaultMinimum: 45, defaultIncrement: 0.5, defaultDivisor: 6000, unitLabel: "KG" },
-  "agl-sea": { label: "AGL 海运", basis: "volume", defaultRatePerKg: 0, defaultRatePerCbm: 0, defaultMinimum: 1, defaultIncrement: 0.01, defaultDivisor: 6000, unitLabel: "CBM" },
+  "sea-fast": { label: "海运快船", basis: "volume", defaultRatePerKg: 0, defaultRatePerCbm: 0, defaultMinimum: 0, defaultIncrement: 0, defaultDivisor: 6000, unitLabel: "CBM" },
+  "sea-slow": { label: "海运慢船", basis: "volume", defaultRatePerKg: 0, defaultRatePerCbm: 0, defaultMinimum: 0, defaultIncrement: 0, defaultDivisor: 6000, unitLabel: "CBM" },
+  "air-delivery": { label: "空派", basis: "weight", defaultRatePerKg: 0, defaultRatePerCbm: 0, defaultMinimum: 0, defaultIncrement: 0, defaultDivisor: 6000, unitLabel: "KG" },
+  air: { label: "空运", basis: "weight", defaultRatePerKg: 0, defaultRatePerCbm: 0, defaultMinimum: 0, defaultIncrement: 0, defaultDivisor: 6000, unitLabel: "KG" },
+  express: { label: "国际快递", basis: "weight", defaultRatePerKg: 0, defaultRatePerCbm: 0, defaultMinimum: 0, defaultIncrement: 0, defaultDivisor: 5000, unitLabel: "KG" },
+  rail: { label: "铁路", basis: "volume", defaultRatePerKg: 0, defaultRatePerCbm: 0, defaultMinimum: 0, defaultIncrement: 0, defaultDivisor: 6000, unitLabel: "CBM" },
+  "truck-eu": { label: "卡航（欧洲）", basis: "volume", defaultRatePerKg: 0, defaultRatePerCbm: 0, defaultMinimum: 0, defaultIncrement: 0, defaultDivisor: 6000, unitLabel: "CBM" },
+  "agl-air": { label: "AGL 空运", basis: "weight", defaultRatePerKg: 0, defaultRatePerCbm: 0, defaultMinimum: 0, defaultIncrement: 0, defaultDivisor: 6000, unitLabel: "KG" },
+  "agl-sea": { label: "AGL 海运", basis: "volume", defaultRatePerKg: 0, defaultRatePerCbm: 0, defaultMinimum: 0, defaultIncrement: 0, defaultDivisor: 6000, unitLabel: "CBM" },
 };
 
 export const DESTINATION_CONFIG: Record<DestinationCode, { label: string; currency: "USD" | "CAD" | "GBP" | "EUR" | "JPY"; symbol: string; defaultExchangeRate: number }> = {

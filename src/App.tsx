@@ -32,18 +32,19 @@ import PackingAssistant from "./PackingAssistant";
 import InventoryCostSimulator from "./InventoryCostSimulator";
 import ProfitSimulator from "./ProfitSimulator";
 import FirstMileCalculator, { type FirstMileTransfer } from "./FirstMileCalculator";
+import { numberInputValue } from "./lib/input";
 
 const DEFAULT_INPUT: FbaInput = {
-  length: 32,
-  width: 18,
-  height: 15,
+  length: 0,
+  width: 0,
+  height: 0,
   lengthUnit: "cm",
-  weight: 560,
+  weight: 0,
   weightUnit: "g",
-  price: 29.99,
+  price: 0,
   productType: "general",
-  feeDate: "2026-07-28",
-  includeSurcharge: true,
+  feeDate: new Date().toISOString().slice(0, 10),
+  includeSurcharge: shouldAutoApplySurcharge(new Date().toISOString().slice(0, 10)),
 };
 
 const PRODUCT_TYPE_LABELS: Record<ProductType, string> = {
@@ -154,7 +155,7 @@ function App() {
         </div>
       </aside>
 
-      {activeModule === "fba" ? <main className="main-content">
+      <div className="module-screen" hidden={activeModule !== "fba"}><main className="main-content">
         <header className="topbar">
           <div>
             <div className="eyebrow">板块一 · FOUNDATION COST ENGINE</div>
@@ -170,7 +171,7 @@ function App() {
           <section className="input-panel" aria-labelledby="input-title">
             <div className="panel-heading">
               <div><span>01</span><h2 id="input-title">产品数据</h2></div>
-              <button className="icon-button" type="button" onClick={reset} title="恢复示例数据"><RotateCcw size={17} /></button>
+              <button className="icon-button" type="button" onClick={reset} title="清空数据"><RotateCcw size={17} /></button>
             </div>
 
             <div className="form-section">
@@ -179,7 +180,7 @@ function App() {
                 {(["length", "width", "height"] as const).map((key, index) => (
                   <label key={key}>
                     <span>{["长", "宽", "高"][index]}</span>
-                    <input type="number" min="0" step="0.01" value={input[key]} onChange={(event) => updateNumber(key, event.target.value)} />
+                    <input type="number" min="0" step="0.01" value={numberInputValue(input[key])} onChange={(event) => updateNumber(key, event.target.value)} />
                   </label>
                 ))}
               </div>
@@ -194,7 +195,7 @@ function App() {
             <div className="form-section two-columns">
               <label className="field-label">
                 <span><Scale size={15} /> 包装后重量</span>
-                <input type="number" min="0" step="0.01" value={input.weight} onChange={(event) => updateNumber("weight", event.target.value)} />
+                <input type="number" min="0" step="0.01" value={numberInputValue(input.weight)} onChange={(event) => updateNumber("weight", event.target.value)} />
               </label>
               <label className="field-label">
                 <span>重量单位</span>
@@ -215,7 +216,7 @@ function App() {
               </label>
               <label className="field-label money-field">
                 <span>产品售价（USD）</span>
-                <div><b>$</b><input type="number" min="0" step="0.01" value={input.price} onChange={(event) => updateNumber("price", event.target.value)} /></div>
+                <div><b>$</b><input type="number" min="0" step="0.01" value={numberInputValue(input.price)} onChange={(event) => updateNumber("price", event.target.value)} /></div>
               </label>
               <label className="field-label">
                 <span>预计出库日期</span>
@@ -345,7 +346,11 @@ function App() {
             </footer>
           </section>
         </div>
-      </main> : activeModule === "packing" ? <PackingAssistant /> : activeModule === "inventory" ? <InventoryCostSimulator /> : activeModule === "first-mile" ? <FirstMileCalculator onTransferToProfit={(transfer) => { setFirstMileTransfer(transfer); setActiveModule("profit"); }} /> : <ProfitSimulator firstMileTransfer={firstMileTransfer} onFirstMileTransferApplied={() => setFirstMileTransfer(null)} />}
+      </main></div>
+      <div className="module-screen" hidden={activeModule !== "packing"}><PackingAssistant /></div>
+      <div className="module-screen" hidden={activeModule !== "inventory"}><InventoryCostSimulator /></div>
+      <div className="module-screen" hidden={activeModule !== "profit"}><ProfitSimulator firstMileTransfer={firstMileTransfer} onFirstMileTransferApplied={() => setFirstMileTransfer(null)} /></div>
+      <div className="module-screen" hidden={activeModule !== "first-mile"}><FirstMileCalculator onTransferToProfit={(transfer) => { setFirstMileTransfer(transfer); setActiveModule("profit"); }} /></div>
     </div>
   );
 }

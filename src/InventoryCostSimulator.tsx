@@ -25,6 +25,7 @@ import {
   type InventoryResult,
   type InventorySizeTier,
 } from "./lib/inventory";
+import { numberInputValue } from "./lib/input";
 
 const OFFICIAL_STORAGE_RULE = "https://sellercentral.amazon.com/help/hub/reference/external/G3EDYEF6KUCFQTNM";
 const OFFICIAL_2026_RULE = "https://sellercentral.amazon.com/help/hub/reference/external/G201411300";
@@ -40,27 +41,27 @@ function localDateString(): string {
 
 function createDefaultInput(): InventoryInput {
   return {
-    sku: "SKU-AGING",
-    asin: "B000000000",
-    productName: "示例库存产品",
-    currentInventory: 420,
-    unitVolumeCuFt: 0.12,
-    averageDailySales: 2.5,
-    inboundDate: "2025-06-15",
+    sku: "",
+    asin: "",
+    productName: "",
+    currentInventory: 0,
+    unitVolumeCuFt: 0,
+    averageDailySales: 0,
+    inboundDate: "",
     currentDate: localDateString(),
     sizeTier: "standard",
     dangerousGoods: false,
     utilizationEligible: false,
-    utilizationWeeks: 18,
+    utilizationWeeks: 0,
     customStorageRate: null,
     customAgedRate: null,
-    removalQuantity: 420,
-    unitWeightLb: 1.2,
+    removalQuantity: 0,
+    unitWeightLb: 0,
     customRemovalFee: null,
-    liquidationQuantity: 420,
-    unitCost: 8,
-    recoveryRate: 0.08,
-    forecastMonths: 12,
+    liquidationQuantity: 0,
+    unitCost: 0,
+    recoveryRate: 0,
+    forecastMonths: 0,
   };
 }
 
@@ -214,7 +215,7 @@ function InventoryCostSimulator() {
           <section className="inventory-input-panel" aria-labelledby="inventory-input-title">
             <div className="panel-heading">
               <div><span>01</span><h2 id="inventory-input-title">库存参数</h2></div>
-              <button className="icon-button" type="button" onClick={reset} title="恢复示例数据"><RotateCcw size={17} /></button>
+              <button className="icon-button" type="button" onClick={reset} title="清空数据"><RotateCcw size={17} /></button>
             </div>
 
             <div className="inventory-form-section">
@@ -229,10 +230,10 @@ function InventoryCostSimulator() {
             <div className="inventory-form-section">
               <div className="section-label"><Gauge size={15} /> 库存与周转</div>
               <div className="inventory-form-grid">
-                <label className="field-label"><span>当前库存（件）</span><input type="number" min="0" step="1" value={input.currentInventory} onChange={(event) => update("currentInventory", integer(event.target.value))} /></label>
-                <label className="field-label"><span>单件体积（cu ft）</span><input type="number" min="0" step="0.001" value={input.unitVolumeCuFt} onChange={(event) => update("unitVolumeCuFt", numeric(event.target.value))} /></label>
-                <label className="field-label"><span>平均日销</span><input type="number" min="0" step="0.01" value={input.averageDailySales} onChange={(event) => update("averageDailySales", numeric(event.target.value))} /></label>
-                <label className="field-label"><span>单件产品成本（$）</span><input type="number" min="0" step="0.01" value={input.unitCost} onChange={(event) => update("unitCost", numeric(event.target.value))} /></label>
+                <label className="field-label"><span>当前库存（件）</span><input type="number" min="0" step="1" value={numberInputValue(input.currentInventory)} onChange={(event) => update("currentInventory", integer(event.target.value))} /></label>
+                <label className="field-label"><span>单件体积（cu ft）</span><input type="number" min="0" step="0.001" value={numberInputValue(input.unitVolumeCuFt)} onChange={(event) => update("unitVolumeCuFt", numeric(event.target.value))} /></label>
+                <label className="field-label"><span>平均日销</span><input type="number" min="0" step="0.01" value={numberInputValue(input.averageDailySales)} onChange={(event) => update("averageDailySales", numeric(event.target.value))} /></label>
+                <label className="field-label"><span>单件产品成本（$）</span><input type="number" min="0" step="0.01" value={numberInputValue(input.unitCost)} onChange={(event) => update("unitCost", numeric(event.target.value))} /></label>
                 <label className="field-label"><span>入仓日期</span><input type="date" value={input.inboundDate} onChange={(event) => update("inboundDate", event.target.value)} /></label>
                 <label className="field-label"><span>当前日期</span><input type="date" value={input.currentDate} onChange={(event) => update("currentDate", event.target.value)} /></label>
               </div>
@@ -253,40 +254,40 @@ function InventoryCostSimulator() {
                 <input type="checkbox" disabled={input.dangerousGoods} checked={input.utilizationEligible} onChange={(event) => update("utilizationEligible", event.target.checked)} />
                 <span><b>符合库容利用率附加费条件</b><small>专业账户、首票超过 365 天且体积和周转达到门槛</small></span>
               </label>
-              {input.utilizationEligible && <label className="field-label"><span>历史库容利用率（周）</span><input type="number" min="0" step="0.1" value={input.utilizationWeeks} onChange={(event) => update("utilizationWeeks", numeric(event.target.value))} /></label>}
+              {input.utilizationEligible && <label className="field-label"><span>历史库容利用率（周）</span><input type="number" min="0" step="0.1" value={numberInputValue(input.utilizationWeeks)} onChange={(event) => update("utilizationWeeks", numeric(event.target.value))} /></label>}
 
               <div className="custom-rate-row">
                 <label className="inventory-check-row compact">
                   <input type="checkbox" checked={input.customStorageRate !== null} onChange={(event) => update("customStorageRate", event.target.checked ? result.storageRates.baseRate : null)} />
                   <span><b>手动月仓储费率</b><small>关闭时按月份自动匹配</small></span>
                 </label>
-                {input.customStorageRate !== null && <label className="rate-input"><span>$ / cu ft</span><input type="number" min="0" step="0.01" value={input.customStorageRate} onChange={(event) => update("customStorageRate", numeric(event.target.value))} /></label>}
+                {input.customStorageRate !== null && <label className="rate-input"><span>$ / cu ft</span><input type="number" min="0" step="0.01" value={numberInputValue(input.customStorageRate)} onChange={(event) => update("customStorageRate", numeric(event.target.value))} /></label>}
               </div>
               <div className="custom-rate-row">
                 <label className="inventory-check-row compact">
                   <input type="checkbox" checked={input.customAgedRate !== null} onChange={(event) => update("customAgedRate", event.target.checked ? result.agedRates.volumeRate : null)} />
                   <span><b>手动老化库存费率</b><small>用于账单复核或新费率覆盖</small></span>
                 </label>
-                {input.customAgedRate !== null && <label className="rate-input"><span>$ / cu ft</span><input type="number" min="0" step="0.01" value={input.customAgedRate} onChange={(event) => update("customAgedRate", numeric(event.target.value))} /></label>}
+                {input.customAgedRate !== null && <label className="rate-input"><span>$ / cu ft</span><input type="number" min="0" step="0.01" value={numberInputValue(input.customAgedRate)} onChange={(event) => update("customAgedRate", numeric(event.target.value))} /></label>}
               </div>
             </div>
 
             <div className="inventory-form-section">
               <div className="section-label"><PackageMinus size={15} /> 退出方案参数</div>
               <div className="inventory-form-grid">
-                <label className="field-label"><span>单件重量（lb）</span><input type="number" min="0" step="0.01" value={input.unitWeightLb} onChange={(event) => update("unitWeightLb", numeric(event.target.value))} /></label>
-                <label className="field-label"><span>移除数量</span><input type="number" min="0" step="1" value={input.removalQuantity} onChange={(event) => update("removalQuantity", integer(event.target.value))} /></label>
-                <label className="field-label"><span>清货数量</span><input type="number" min="0" step="1" value={input.liquidationQuantity} onChange={(event) => update("liquidationQuantity", integer(event.target.value))} /></label>
-                <label className="field-label"><span>预计毛回收率</span><div className="percent-input"><input type="number" min="0" max="100" step="0.1" value={number(input.recoveryRate * 100, 1)} onChange={(event) => update("recoveryRate", Math.min(1, numeric(event.target.value) / 100))} /><b>%</b></div></label>
+                <label className="field-label"><span>单件重量（lb）</span><input type="number" min="0" step="0.01" value={numberInputValue(input.unitWeightLb)} onChange={(event) => update("unitWeightLb", numeric(event.target.value))} /></label>
+                <label className="field-label"><span>移除数量</span><input type="number" min="0" step="1" value={numberInputValue(input.removalQuantity)} onChange={(event) => update("removalQuantity", integer(event.target.value))} /></label>
+                <label className="field-label"><span>清货数量</span><input type="number" min="0" step="1" value={numberInputValue(input.liquidationQuantity)} onChange={(event) => update("liquidationQuantity", integer(event.target.value))} /></label>
+                <label className="field-label"><span>预计毛回收率</span><div className="percent-input"><input type="number" min="0" max="100" step="0.1" value={numberInputValue(input.recoveryRate * 100)} onChange={(event) => update("recoveryRate", Math.min(1, numeric(event.target.value) / 100))} /><b>%</b></div></label>
               </div>
               <div className="custom-rate-row removal-rate-row">
                 <label className="inventory-check-row compact">
                   <input type="checkbox" checked={input.customRemovalFee !== null} onChange={(event) => update("customRemovalFee", event.target.checked ? result.removalFeePerUnit : null)} />
                   <span><b>手动单件移除费</b><small>关闭时按 2026 重量阶梯自动匹配</small></span>
                 </label>
-                {input.customRemovalFee !== null && <label className="rate-input"><span>$ / 件</span><input type="number" min="0" step="0.01" value={input.customRemovalFee} onChange={(event) => update("customRemovalFee", numeric(event.target.value))} /></label>}
+                {input.customRemovalFee !== null && <label className="rate-input"><span>$ / 件</span><input type="number" min="0" step="0.01" value={numberInputValue(input.customRemovalFee)} onChange={(event) => update("customRemovalFee", numeric(event.target.value))} /></label>}
               </div>
-              <label className="field-label forecast-field"><span>未来持有成本推演（月）</span><input type="number" min="1" max="24" step="1" value={input.forecastMonths} onChange={(event) => update("forecastMonths", Math.min(24, Math.max(1, integer(event.target.value))))} /></label>
+              <label className="field-label forecast-field"><span>未来持有成本推演（月）</span><input type="number" min="1" max="24" step="1" value={numberInputValue(input.forecastMonths)} onChange={(event) => update("forecastMonths", event.target.value === "" ? 0 : Math.min(24, Math.max(1, integer(event.target.value))))} /></label>
             </div>
           </section>
 

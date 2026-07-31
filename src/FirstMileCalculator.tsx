@@ -41,6 +41,7 @@ import {
   type AmazonWarehouse,
   type UsWarehouseRegion,
 } from "./lib/amazonWarehouses";
+import { numberInputValue } from "./lib/input";
 
 export interface FirstMileTransfer {
   id: number;
@@ -67,19 +68,19 @@ const ORIGIN_COUNTRIES = ["中国", "越南", "印度", "泰国", "马来西亚"
 const AMAZON_FULFILLMENT_INBOUND_API_URL = "https://developer-docs.amazon.com/sp-api/reference/fulfillment-inbound-v2024-03-20";
 
 const DEFAULT_FEES: AdditionalFeeItem[] = [
-  { id: "pickup", name: "提货费", category: "origin", amount: 500 },
-  { id: "customs-declaration", name: "报关费", category: "origin", amount: 350 },
+  { id: "pickup", name: "提货费", category: "origin", amount: 0 },
+  { id: "customs-declaration", name: "报关费", category: "origin", amount: 0 },
   { id: "inspection", name: "商检费", category: "origin", amount: 0 },
-  { id: "document", name: "文件费", category: "carrier", amount: 150 },
+  { id: "document", name: "文件费", category: "carrier", amount: 0 },
   { id: "port", name: "港杂费", category: "carrier", amount: 0 },
   { id: "fuel", name: "燃油附加费", category: "carrier", amount: 0 },
   { id: "ams", name: "AMS / ENS 费用", category: "carrier", amount: 0 },
-  { id: "clearance", name: "清关费", category: "destination", amount: 800 },
-  { id: "duty", name: "关税", category: "tax", amount: 1200 },
+  { id: "clearance", name: "清关费", category: "destination", amount: 0 },
+  { id: "duty", name: "关税", category: "tax", amount: 0 },
   { id: "vat", name: "VAT（欧洲）", category: "tax", amount: 0 },
   { id: "exam", name: "查验费", category: "destination", amount: 0 },
   { id: "destination", name: "目的港费用", category: "destination", amount: 0 },
-  { id: "truck", name: "卡车派送费", category: "destination", amount: 1200 },
+  { id: "truck", name: "卡车派送费", category: "destination", amount: 0 },
   { id: "ups", name: "UPS 派送费", category: "destination", amount: 0 },
   { id: "appointment", name: "Amazon 预约费", category: "destination", amount: 0 },
   { id: "palletizing", name: "打托费", category: "destination", amount: 0 },
@@ -88,36 +89,27 @@ const DEFAULT_FEES: AdditionalFeeItem[] = [
   { id: "other", name: "其它费用", category: "other", amount: 0 },
 ];
 
-function dateString(offsetDays = 0): string {
-  const date = new Date();
-  date.setDate(date.getDate() + offsetDays);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 function createDefaultInput(): FirstMileInput {
   const mode = TRANSPORT_MODE_CONFIG["sea-fast"];
   return {
-    sku: "SKU-FIRST-MILE",
-    asin: "B000000000",
+    sku: "",
+    asin: "",
     originCountry: "中国",
     destination: "US",
-    amazonWarehouse: "ONT8",
-    shipDate: dateString(),
-    estimatedArrivalDate: dateString(30),
-    totalUnits: 1000,
-    unitWeightKg: 0.5,
-    unitLengthCm: 20,
-    unitWidthCm: 15,
-    unitHeightCm: 5,
-    unitsPerCarton: 20,
-    cartonCount: 50,
-    cartonLengthCm: 50,
-    cartonWidthCm: 40,
-    cartonHeightCm: 30,
-    cartonGrossWeightKg: 11,
+    amazonWarehouse: "",
+    shipDate: "",
+    estimatedArrivalDate: "",
+    totalUnits: 0,
+    unitWeightKg: 0,
+    unitLengthCm: 0,
+    unitWidthCm: 0,
+    unitHeightCm: 0,
+    unitsPerCarton: 0,
+    cartonCount: 0,
+    cartonLengthCm: 0,
+    cartonWidthCm: 0,
+    cartonHeightCm: 0,
+    cartonGrossWeightKg: 0,
     transportMode: "sea-fast",
     ratePerKg: mode.defaultRatePerKg,
     ratePerCbm: mode.defaultRatePerCbm,
@@ -125,8 +117,8 @@ function createDefaultInput(): FirstMileInput {
     billingIncrement: mode.defaultIncrement,
     volumeWeightDivisor: mode.defaultDivisor,
     fees: DEFAULT_FEES.map((fee) => ({ ...fee })),
-    salePrice: 29.99,
-    exchangeRateCnyPerCurrency: DESTINATION_CONFIG.US.defaultExchangeRate,
+    salePrice: 0,
+    exchangeRateCnyPerCurrency: 0,
   };
 }
 
@@ -209,7 +201,7 @@ function FirstMileCalculator({ onTransferToProfit }: FirstMileCalculatorProps) {
   const [input, setInput] = useState<FirstMileInput>(() => createDefaultInput());
   const [copied, setCopied] = useState(false);
   const [transferred, setTransferred] = useState(false);
-  const [warehouseQuery, setWarehouseQuery] = useState("ONT8");
+  const [warehouseQuery, setWarehouseQuery] = useState("");
   const [warehouseMenuOpen, setWarehouseMenuOpen] = useState(false);
   const [warehouseRegionFilter, setWarehouseRegionFilter] = useState<"all" | UsWarehouseRegion>("all");
   const result = useMemo(() => calculateFirstMile(input), [input]);
@@ -238,15 +230,14 @@ function FirstMileCalculator({ onTransferToProfit }: FirstMileCalculatorProps) {
   };
 
   const updateDestination = (destinationCode: DestinationCode) => {
-    const config = DESTINATION_CONFIG[destinationCode];
     setInput((current) => ({
       ...current,
       destination: destinationCode,
-      exchangeRateCnyPerCurrency: config.defaultExchangeRate,
-      amazonWarehouse: destinationCode === "US" ? current.amazonWarehouse || "ONT8" : "",
+      exchangeRateCnyPerCurrency: 0,
+      amazonWarehouse: destinationCode === "US" ? current.amazonWarehouse : "",
     }));
     if (destinationCode === "US") {
-      setWarehouseQuery((current) => current || "ONT8");
+      setWarehouseQuery("");
     } else {
       setWarehouseQuery("");
       setWarehouseMenuOpen(false);
@@ -314,7 +305,7 @@ function FirstMileCalculator({ onTransferToProfit }: FirstMileCalculatorProps) {
   };
 
   const field = (label: string, key: keyof FirstMileInput, suffix?: string, step = 0.01) => (
-    <label className="fm-field"><span>{label}</span><div><input type="number" min="0" step={step} value={input[key] as number} onChange={(event) => updateNumber(key, event.target.value)} />{suffix && <em>{suffix}</em>}</div></label>
+    <label className="fm-field"><span>{label}</span><div><input type="number" min="0" step={step} value={numberInputValue(input[key] as number)} onChange={(event) => updateNumber(key, event.target.value)} />{suffix && <em>{suffix}</em>}</div></label>
   );
 
   return (
@@ -328,7 +319,7 @@ function FirstMileCalculator({ onTransferToProfit }: FirstMileCalculatorProps) {
         <section className="fm-hero">
           <div><span>单件落地头程成本</span><strong><sup>¥</sup>{money(result.unitFirstMileCostCny)}</strong><p>{input.sku || "未填写 SKU"} · {input.originCountry} → {destination.label} · {selectedWarehouse ? `${selectedWarehouse.code} ${US_WAREHOUSE_REGION_LABELS[selectedWarehouse.region]}` : mode.label}</p></div>
           <div className="fm-hero-grid"><div><small>头程总费用</small><b>¥{money(result.totalFirstMileCost)}</b></div><div><small>不含税物流/件</small><b>¥{money(result.unitLogisticsCostBeforeImportTaxes)}</b></div><div><small>关税 VAT/件</small><b>¥{money(result.unitImportTax)}</b></div><div><small>头程占售价</small><b>{percent(result.firstMileShareOfSalePrice)}</b></div></div>
-          <div className="fm-hero-actions"><button type="button" title="恢复示例数据" onClick={() => { setInput(createDefaultInput()); setWarehouseQuery("ONT8"); setWarehouseRegionFilter("all"); }}><RotateCcw size={15} /></button><button type="button" onClick={copyResult}>{copied ? <Check size={15} /> : <Copy size={15} />}{copied ? "已复制" : "复制"}</button><button type="button" onClick={() => exportWorkbook(input, result, selectedWarehouse)}><Download size={15} /> Excel</button></div>
+          <div className="fm-hero-actions"><button type="button" title="清空数据" onClick={() => { setInput(createDefaultInput()); setWarehouseQuery(""); setWarehouseRegionFilter("all"); }}><RotateCcw size={15} /></button><button type="button" onClick={copyResult}>{copied ? <Check size={15} /> : <Copy size={15} />}{copied ? "已复制" : "复制"}</button><button type="button" onClick={() => exportWorkbook(input, result, selectedWarehouse)}><Download size={15} /> Excel</button></div>
         </section>
 
         <div className="fm-workspace">
@@ -361,7 +352,7 @@ function FirstMileCalculator({ onTransferToProfit }: FirstMileCalculatorProps) {
 
             <article className="fm-card fee-card">
               <div className="fm-section-heading"><ReceiptText size={18} /><div><h2>附加费用</h2><p>自由增删，关税/VAT 单独归类以供利润联动</p></div><button className="fm-add-button" type="button" onClick={addFee}><Plus size={14} /> 新增</button></div>
-              <div className="fm-fee-table"><div className="fm-fee-head"><span>费用项目</span><span>分类</span><span>金额（CNY）</span><span /></div>{input.fees.map((fee) => <div className="fm-fee-row" key={fee.id}><input value={fee.name} onChange={(event) => updateFee(fee.id, { name: event.target.value })} /><select value={fee.category} onChange={(event) => updateFee(fee.id, { category: event.target.value as FeeCategory })}>{Object.entries(FEE_CATEGORY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><input type="number" min="0" step="0.01" value={fee.amount} onChange={(event) => updateFee(fee.id, { amount: numeric(event.target.value) })} /><button type="button" title="删除费用" onClick={() => removeFee(fee.id)}><Trash2 size={14} /></button></div>)}</div>
+              <div className="fm-fee-table"><div className="fm-fee-head"><span>费用项目</span><span>分类</span><span>金额（CNY）</span><span /></div>{input.fees.map((fee) => <div className="fm-fee-row" key={fee.id}><input value={fee.name} onChange={(event) => updateFee(fee.id, { name: event.target.value })} /><select value={fee.category} onChange={(event) => updateFee(fee.id, { category: event.target.value as FeeCategory })}>{Object.entries(FEE_CATEGORY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><input type="number" min="0" step="0.01" value={numberInputValue(fee.amount)} onChange={(event) => updateFee(fee.id, { amount: numeric(event.target.value) })} /><button type="button" title="删除费用" onClick={() => removeFee(fee.id)}><Trash2 size={14} /></button></div>)}</div>
               <div className="fm-fee-summary"><div><span>起运地</span><b>¥{money(result.originFees)}</b></div><div><span>承运文件</span><b>¥{money(result.carrierFees)}</b></div><div><span>目的地</span><b>¥{money(result.destinationFees)}</b></div><div><span>关税/VAT</span><b>¥{money(result.importTaxes)}</b></div><div><span>其它</span><b>¥{money(result.otherFees)}</b></div></div>
             </article>
 
