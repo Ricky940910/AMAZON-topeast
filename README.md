@@ -8,6 +8,8 @@
 - 板块二：FBA 发货装箱助手
 - 板块三：FBA 库存成本推演
 - 板块四：亚马逊利润测算器（运营版）
+- 板块五：头程费用计算与利润联动
+- 板块六：链接评分计算（VP Review + VP Rating 经验估算）
 - 单位标准化、2026 Size Tier、Shipping Weight、体积重诊断
 - 2026 普通商品、服装、危险品的非旺季/旺季配送费
 - 2026 年 4 月 17 日起 3.5% fuel and logistics-related surcharge
