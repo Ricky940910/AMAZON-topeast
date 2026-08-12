@@ -783,6 +783,182 @@
       text-align: center;
     }
 
+    .review-tool-grid {
+      display: grid;
+      grid-template-columns: minmax(360px, 1.15fr) minmax(300px, 0.85fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .review-input-panel,
+    .review-result-panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      background: linear-gradient(180deg, #fff, #fbfaf4);
+    }
+
+    .review-table {
+      width: 100%;
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      border-collapse: separate;
+      border-spacing: 0;
+      overflow: hidden;
+    }
+
+    .review-table th,
+    .review-table td {
+      padding: 9px 10px;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      font-size: 13px;
+    }
+
+    .review-table th:last-child,
+    .review-table td:last-child { border-right: 0; }
+    .review-table tbody tr:last-child td { border-bottom: 0; }
+
+    .review-table th {
+      background: #f7f3ea;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .review-table td:first-child {
+      width: 96px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .review-table input {
+      width: 100%;
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 7px 9px;
+      text-align: right;
+      background: #fff;
+    }
+
+    .review-table input:focus {
+      outline: 2px solid rgba(49, 93, 133, 0.2);
+      border-color: var(--blue);
+    }
+
+    .review-note {
+      margin: 11px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .review-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .review-kpis {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 9px;
+      margin-bottom: 12px;
+    }
+
+    .review-kpi {
+      min-height: 90px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 11px;
+      background: #fff;
+    }
+
+    .review-kpi span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .review-kpi strong {
+      display: block;
+      margin-top: 8px;
+      font-size: 24px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .review-result-main {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      padding: 14px 0;
+    }
+
+    .review-result-main span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .review-result-main strong {
+      display: block;
+      margin-top: 4px;
+      color: var(--green);
+      font-size: 38px;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .review-score-badge {
+      display: grid;
+      place-items: center;
+      width: 76px;
+      height: 76px;
+      border: 1px solid rgba(37, 76, 67, 0.25);
+      border-radius: 50%;
+      color: var(--green);
+      background: #f0f7f3;
+      font-size: 13px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .review-formula {
+      margin: 12px 0 0;
+      padding: 10px 11px;
+      border-radius: 6px;
+      color: #4b514c;
+      background: #f7f3ea;
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 12px;
+      line-height: 1.55;
+      overflow-wrap: anywhere;
+    }
+
+    .review-breakdown {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .review-breakdown-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .review-breakdown-row strong {
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+
     @media (max-width: 1180px) {
       .kpi-grid {
         grid-template-columns: repeat(3, minmax(150px, 1fr));
@@ -800,7 +976,8 @@
 
     @media (max-width: 900px) {
       .hero,
-      .workspace-grid {
+      .workspace-grid,
+      .review-tool-grid {
         grid-template-columns: 1fr;
       }
       .form-grid,
@@ -830,7 +1007,8 @@
       .form-grid,
       .stage-grid,
       .decision-card-grid,
-      .policy-grid {
+      .policy-grid,
+      .review-kpis {
         grid-template-columns: 1fr;
       }
       .section-head {
@@ -1097,6 +1275,62 @@
             </label>
           </div>
           <div class="decision-card-grid" id="tester-results"></div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="review-score-title">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">板块六 · Review Score</p>
+            <h2 id="review-score-title">亚马逊链接评分计算</h2>
+            <p>输入 Review 文字评论与 Rating 纯点星的各星级数量，快速估算链接前台星级。</p>
+          </div>
+        </div>
+        <div class="section-body">
+          <div class="review-tool-grid">
+            <div class="review-input-panel">
+              <table class="review-table" aria-label="Review与Rating星级数量输入">
+                <thead>
+                  <tr>
+                    <th>星级</th>
+                    <th>Review 文字评论</th>
+                    <th>Rating 纯点星</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td>5 星</td><td><input class="review-count" data-kind="review" data-stars="5" type="number" min="0" step="1" value="0" aria-label="Review 5星数量" /></td><td><input class="review-count" data-kind="rating" data-stars="5" type="number" min="0" step="1" value="0" aria-label="Rating 5星数量" /></td></tr>
+                  <tr><td>4 星</td><td><input class="review-count" data-kind="review" data-stars="4" type="number" min="0" step="1" value="0" aria-label="Review 4星数量" /></td><td><input class="review-count" data-kind="rating" data-stars="4" type="number" min="0" step="1" value="0" aria-label="Rating 4星数量" /></td></tr>
+                  <tr><td>3 星</td><td><input class="review-count" data-kind="review" data-stars="3" type="number" min="0" step="1" value="0" aria-label="Review 3星数量" /></td><td><input class="review-count" data-kind="rating" data-stars="3" type="number" min="0" step="1" value="0" aria-label="Rating 3星数量" /></td></tr>
+                  <tr><td>2 星</td><td><input class="review-count" data-kind="review" data-stars="2" type="number" min="0" step="1" value="0" aria-label="Review 2星数量" /></td><td><input class="review-count" data-kind="rating" data-stars="2" type="number" min="0" step="1" value="0" aria-label="Rating 2星数量" /></td></tr>
+                  <tr><td>1 星</td><td><input class="review-count" data-kind="review" data-stars="1" type="number" min="0" step="1" value="0" aria-label="Review 1星数量" /></td><td><input class="review-count" data-kind="rating" data-stars="1" type="number" min="0" step="1" value="0" aria-label="Rating 1星数量" /></td></tr>
+                </tbody>
+              </table>
+              <p class="review-note">计算采用 Review 与 Rating 同权的经验公式。亚马逊前台真实评分可能受时间、可信度、变体合并和算法取整影响，本工具用于运营估算。</p>
+              <div class="review-actions">
+                <button class="btn" id="review-demo"><i data-lucide="wand-sparkles"></i>填入示例</button>
+                <button class="btn ghost" id="review-clear"><i data-lucide="eraser"></i>清空</button>
+              </div>
+            </div>
+
+            <div class="review-result-panel" aria-live="polite">
+              <div class="review-kpis">
+                <article class="review-kpi"><span>总 Rating 数量</span><strong id="review-total-count">0</strong></article>
+                <article class="review-kpi"><span>总星分</span><strong id="review-total-points">0</strong></article>
+                <article class="review-kpi"><span>Review 均分</span><strong id="review-average">-</strong></article>
+                <article class="review-kpi"><span>Rating 均分</span><strong id="rating-average">-</strong></article>
+              </div>
+              <div class="review-result-main">
+                <div><span>基础计算分</span><strong id="review-raw-score">-</strong><span id="review-display-note">请输入星级数量</span></div>
+                <div class="review-score-badge" id="review-display-score">-</div>
+              </div>
+              <div class="review-formula" id="review-formula">总星分 ÷ 总 Rating 数量 = 基础计算分</div>
+              <div class="review-breakdown">
+                <div class="review-breakdown-row"><span>Review 数量 / 星分</span><strong id="review-breakdown">0 / 0</strong></div>
+                <div class="review-breakdown-row"><span>Rating 数量 / 星分</span><strong id="rating-breakdown">0 / 0</strong></div>
+                <div class="review-breakdown-row"><span>5 星占比</span><strong id="five-star-share">-</strong></div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -1672,6 +1906,56 @@
       return String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
     }
 
+    function reviewScoreData() {
+      const totals = {
+        review: { count: 0, points: 0 },
+        rating: { count: 0, points: 0 }
+      };
+      document.querySelectorAll(".review-count").forEach(input => {
+        const count = Math.max(0, Math.floor(Number(input.value) || 0));
+        const stars = Number(input.dataset.stars);
+        const kind = input.dataset.kind;
+        if (!totals[kind] || !Number.isFinite(stars)) return;
+        totals[kind].count += count;
+        totals[kind].points += count * stars;
+      });
+      const totalCount = totals.review.count + totals.rating.count;
+      const totalPoints = totals.review.points + totals.rating.points;
+      const rawScore = totalCount ? totalPoints / totalCount : null;
+      // Amazon's exact weighting and display algorithm are unpublished. This keeps
+      // the observed boundary behavior: an exact x.x5 threshold stays on the lower tenth.
+      const displayScore = rawScore == null ? null : Math.round((rawScore - 1e-9) * 10) / 10;
+      return { ...totals, totalCount, totalPoints, rawScore, displayScore };
+    }
+
+    function reviewScoreText(value) {
+      return value == null ? "-" : Number(value).toFixed(2);
+    }
+
+    function renderReviewScore() {
+      const data = reviewScoreData();
+      const reviewAverage = data.review.count ? data.review.points / data.review.count : null;
+      const ratingAverage = data.rating.count ? data.rating.points / data.rating.count : null;
+      const fiveStarCount = [...document.querySelectorAll('.review-count[data-stars="5"]')]
+        .reduce((total, input) => total + Math.max(0, Math.floor(Number(input.value) || 0)), 0);
+      const fiveStarShare = data.totalCount ? fiveStarCount / data.totalCount : null;
+      document.getElementById("review-total-count").textContent = num(data.totalCount);
+      document.getElementById("review-total-points").textContent = num(data.totalPoints);
+      document.getElementById("review-average").textContent = reviewScoreText(reviewAverage);
+      document.getElementById("rating-average").textContent = reviewScoreText(ratingAverage);
+      document.getElementById("review-raw-score").textContent = reviewScoreText(data.rawScore);
+      document.getElementById("review-display-score").textContent = data.displayScore == null ? "-" : `${data.displayScore.toFixed(1)} 星`;
+      document.getElementById("review-display-note").textContent = data.displayScore == null
+        ? "请输入星级数量"
+        : "经验显示分 · 临界值向下";
+      document.getElementById("review-formula").textContent = data.totalCount
+        ? `(${num(data.totalPoints)} 总星分) ÷ (${num(data.totalCount)} 总 Rating 数量) = ${data.rawScore.toFixed(4)}`
+        : "总星分 ÷ 总 Rating 数量 = 基础计算分";
+      document.getElementById("review-breakdown").textContent = `${num(data.review.count)} / ${num(data.review.points)}`;
+      document.getElementById("rating-breakdown").textContent = `${num(data.rating.count)} / ${num(data.rating.points)}`;
+      document.getElementById("five-star-share").textContent = fiveStarShare == null ? "-" : pct(fiveStarShare);
+    }
+
     function render() {
       const rows = filteredRows();
       const baseRows = allRows();
@@ -1682,6 +1966,7 @@
       renderPolicies();
       renderTable(rows);
       renderSkuTester();
+      renderReviewScore();
       if (window.lucide) window.lucide.createIcons();
     }
 
@@ -1972,6 +2257,25 @@
     ["tester-marketplace", "tester-unit", "tester-size-tier", "tester-length", "tester-width", "tester-height", "tester-weight", "tester-weight-unit", "tester-units", "tester-age-days"].forEach(id => {
       document.getElementById(id).addEventListener("input", renderSkuTester);
       document.getElementById(id).addEventListener("change", renderSkuTester);
+    });
+
+    document.querySelectorAll(".review-count").forEach(input => {
+      input.addEventListener("input", renderReviewScore);
+      input.addEventListener("change", renderReviewScore);
+    });
+    document.getElementById("review-demo").addEventListener("click", () => {
+      const demo = {
+        "review-5": 15, "review-4": 5, "review-3": 0, "review-2": 0, "review-1": 1,
+        "rating-5": 4, "rating-4": 2, "rating-3": 0, "rating-2": 0, "rating-1": 2
+      };
+      document.querySelectorAll(".review-count").forEach(input => {
+        input.value = demo[`${input.dataset.kind}-${input.dataset.stars}`] ?? 0;
+      });
+      renderReviewScore();
+    });
+    document.getElementById("review-clear").addEventListener("click", () => {
+      document.querySelectorAll(".review-count").forEach(input => { input.value = 0; });
+      renderReviewScore();
     });
 
     render();
