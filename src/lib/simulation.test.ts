@@ -40,11 +40,7 @@ const input: SimulationInput = {
   costs: {
     productCost: 6,
     packagingCost: 0.5,
-    domesticCost: 0.3,
-    otherProductCost: 0.2,
     firstMileCost: 1.2,
-    lastMileCost: 0,
-    otherLogisticsCost: 0,
     fbaFee: 4.8,
     storageFee: 0.2,
     otherAmazonFee: 0.1,

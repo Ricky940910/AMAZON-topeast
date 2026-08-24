@@ -68,11 +68,7 @@ const DEFAULT_INPUT: SimulationInput = {
   costs: {
     productCost: 0,
     packagingCost: 0,
-    domesticCost: 0,
-    otherProductCost: 0,
     firstMileCost: 0,
-    lastMileCost: 0,
-    otherLogisticsCost: 0,
     fbaFee: 0,
     storageFee: 0,
     otherAmazonFee: 0,
@@ -332,7 +328,7 @@ function ProfitDecisionDesk() {
           <section className="sim-card">
             <div className="sim-card-head"><Calculator size={18} /><div><h2>成本、广告与目标</h2><p>单位成本、月度固定成本和百分比严格分开</p></div></div>
             <div className="sim-subhead">产品与物流成本 / 件</div>
-            <div className="sim-form-grid four">{field("采购成本", "costs", "productCost", { prefix: symbol })}{field("包装成本", "costs", "packagingCost", { prefix: symbol })}{field("国内成本", "costs", "domesticCost", { prefix: symbol })}{field("其他产品成本", "costs", "otherProductCost", { prefix: symbol })}{field("头程成本", "costs", "firstMileCost", { prefix: symbol })}{field("尾程成本", "costs", "lastMileCost", { prefix: symbol })}{field("其他物流成本", "costs", "otherLogisticsCost", { prefix: symbol })}</div>
+            <div className="sim-form-grid three">{field("采购成本", "costs", "productCost", { prefix: symbol })}{field("包装成本", "costs", "packagingCost", { prefix: symbol })}{field("头程成本", "costs", "firstMileCost", { prefix: symbol })}</div>
             <div className="sim-cost-summary"><span>产品总成本 / 件 <b><Currency symbol={symbol} value={getProductCostPerUnit(input.costs)} /></b></span><span>物流总成本 / 件 <b><Currency symbol={symbol} value={getLogisticsCostPerUnit(input.costs)} /></b></span></div>
             <div className="sim-subhead">Amazon 与售后成本</div>
             <div className="sim-form-grid four">{field("FBA Fee / 件", "costs", "fbaFee", { prefix: symbol })}{field("仓储费 / 件", "costs", "storageFee", { prefix: symbol })}{field("其他 Amazon 费 / 件", "costs", "otherAmazonFee", { prefix: symbol })}{field("退货率", "costs", "returnRate", { percent: true, suffix: "%" })}{field("仅退款率", "costs", "refundWithoutReturnRate", { percent: true, suffix: "%" })}{field("退货不可售率", "costs", "unsellableReturnRate", { percent: true, suffix: "%" })}{field("平均退货处理损失", "costs", "averageReturnLoss", { prefix: symbol })}{field("其他售后损失 / 单", "costs", "otherAfterSalesLossPerOrder", { prefix: symbol })}</div>

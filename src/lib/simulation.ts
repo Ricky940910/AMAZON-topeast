@@ -37,11 +37,7 @@ export interface SalesModel {
 export interface SimulationCostModel {
   productCost: number;
   packagingCost: number;
-  domesticCost: number;
-  otherProductCost: number;
   firstMileCost: number;
-  lastMileCost: number;
-  otherLogisticsCost: number;
   fbaFee: number;
   storageFee: number;
   otherAmazonFee: number;
@@ -227,11 +223,7 @@ export const SimulationInputSchema = z.object({
   costs: z.object({
     productCost: nonNegative,
     packagingCost: nonNegative,
-    domesticCost: nonNegative,
-    otherProductCost: nonNegative,
     firstMileCost: nonNegative,
-    lastMileCost: nonNegative,
-    otherLogisticsCost: nonNegative,
     fbaFee: nonNegative,
     storageFee: nonNegative,
     otherAmazonFee: nonNegative,
@@ -292,11 +284,11 @@ export function validateSimulationInput(input: SimulationInput): string[] {
 }
 
 export function getProductCostPerUnit(costs: SimulationCostModel): number {
-  return positive(costs.productCost) + positive(costs.packagingCost) + positive(costs.domesticCost) + positive(costs.otherProductCost);
+  return positive(costs.productCost) + positive(costs.packagingCost);
 }
 
 export function getLogisticsCostPerUnit(costs: SimulationCostModel): number {
-  return positive(costs.firstMileCost) + positive(costs.lastMileCost) + positive(costs.otherLogisticsCost);
+  return positive(costs.firstMileCost);
 }
 
 export function resolveMonthlyPlan(input: SimulationInput, month: number): ResolvedMonthlyPlan {
