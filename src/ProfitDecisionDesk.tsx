@@ -21,6 +21,7 @@ import {
 import { MARKETPLACE_CONFIG, type SalesSite } from "./lib/profit";
 import { getDefaultReferralCategory, getReferralFeeCategories } from "./lib/referralFees";
 import { numberInputValue } from "./lib/input";
+import NumberInput from "./NumberInput";
 import {
   DEFAULT_PROMOTION_PHASES,
   DEFAULT_SCENARIOS,
@@ -217,6 +218,15 @@ function ProfitDecisionDesk() {
     setInput((current) => ({ ...current, monthlyPlans: current.monthlyPlans.map((plan) => plan.month === selectedMonth ? { month: selectedMonth } : plan) }));
   };
 
+  const clearAllData = () => {
+    setInput(DEFAULT_INPUT);
+    setScenarioConfigs(DEFAULT_SCENARIOS);
+    setSelectedMonth(1);
+    setActiveTab("inputs");
+    setShowPhases(false);
+    setCopied(false);
+  };
+
   const updatePhase = (id: string, key: "name" | "endDay" | "objective", rawValue: string) => {
     setInput((current) => ({
       ...current,
@@ -255,20 +265,20 @@ function ProfitDecisionDesk() {
   const field = (label: string, section: "sales" | "costs" | "targets", key: string, options: { percent?: boolean; prefix?: string; suffix?: string } = {}) => {
     const raw = Number(input[section][key as keyof typeof input[typeof section]] ?? 0);
     const value = options.percent ? raw * 100 : raw;
-    return <label className="sim-field"><span>{label}</span><div>{options.prefix && <b>{options.prefix}</b>}<input type="number" min="0" step={options.percent ? "0.1" : "0.01"} value={numberInputValue(value)} onChange={(event) => updateNumber(section, key, event.target.value)} />{options.suffix && <em>{options.suffix}</em>}</div></label>;
+    return <label className="sim-field"><span>{label}</span><div>{options.prefix && <b>{options.prefix}</b>}<NumberInput min="0" step={options.percent ? "0.1" : "0.01"} value={value} onRawChange={(rawValue) => updateNumber(section, key, rawValue)} />{options.suffix && <em>{options.suffix}</em>}</div></label>;
   };
 
   const monthField = (label: string, key: keyof Omit<MonthlyPlanOverride, "month">, options: { percent?: boolean; prefix?: string; suffix?: string } = {}) => {
     const raw = Number(selectedPlan[key as keyof typeof selectedPlan] ?? 0);
     const value = options.percent ? raw * 100 : raw;
-    return <label className="sim-field"><span>{label}</span><div>{options.prefix && <b>{options.prefix}</b>}<input type="number" min="0" step={options.percent ? "0.1" : "0.01"} value={numberInputValue(value)} onChange={(event) => updateMonthlyPlan(key, event.target.value, options.percent)} />{options.suffix && <em>{options.suffix}</em>}</div></label>;
+    return <label className="sim-field"><span>{label}</span><div>{options.prefix && <b>{options.prefix}</b>}<NumberInput min="0" step={options.percent ? "0.1" : "0.01"} value={value} onRawChange={(rawValue) => updateMonthlyPlan(key, rawValue, options.percent)} />{options.suffix && <em>{options.suffix}</em>}</div></label>;
   };
 
   return (
     <main className="main-content sim-main">
       <header className="topbar sim-topbar">
         <div><div className="eyebrow">板块六 · PROFIT & PROMOTION DECISION DESK</div><h1>推演</h1><p>亚马逊利润、推广生命周期、资金缺口与回本决策系统</p></div>
-        <div className="sim-top-actions"><button className="rule-link" type="button" onClick={() => setInput(DEFAULT_INPUT)}><RefreshCcw size={15} /> 清空</button><button className="rule-link" type="button" onClick={copyConclusion}>{copied ? <Check size={15} /> : <Copy size={15} />}{copied ? "已复制" : "复制结论"}</button></div>
+        <div className="sim-top-actions"><button className="rule-link" type="button" onClick={clearAllData} title="清零全部推演数据"><RefreshCcw size={15} /> 一键清零</button><button className="rule-link" type="button" onClick={copyConclusion}>{copied ? <Check size={15} /> : <Copy size={15} />}{copied ? "已复制" : "复制结论"}</button></div>
       </header>
 
       <div className="sim-page">
