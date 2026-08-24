@@ -72,9 +72,6 @@ export interface MonthlyPlanOverride {
   acos?: number;
   adSpend?: number;
   returnRate?: number;
-  fbaFee?: number;
-  productCostPerUnit?: number;
-  logisticsCostPerUnit?: number;
   otherPromotionCost?: number;
 }
 
@@ -250,9 +247,6 @@ export const SimulationInputSchema = z.object({
     acos: nonNegative.optional(),
     adSpend: nonNegative.optional(),
     returnRate: percentage.optional(),
-    fbaFee: nonNegative.optional(),
-    productCostPerUnit: nonNegative.optional(),
-    logisticsCostPerUnit: nonNegative.optional(),
     otherPromotionCost: nonNegative.optional(),
   })).max(12),
 });
@@ -302,9 +296,9 @@ export function resolveMonthlyPlan(input: SimulationInput, month: number): Resol
     acos: positive(override?.acos ?? input.sales.acos),
     adSpend: positive(override?.adSpend ?? input.sales.monthlyAdSpend),
     returnRate: clampRate(override?.returnRate ?? input.costs.returnRate),
-    fbaFee: positive(override?.fbaFee ?? input.costs.fbaFee),
-    productCostPerUnit: positive(override?.productCostPerUnit ?? getProductCostPerUnit(input.costs)),
-    logisticsCostPerUnit: positive(override?.logisticsCostPerUnit ?? getLogisticsCostPerUnit(input.costs)),
+    fbaFee: positive(input.costs.fbaFee),
+    productCostPerUnit: getProductCostPerUnit(input.costs),
+    logisticsCostPerUnit: getLogisticsCostPerUnit(input.costs),
     otherPromotionCost: positive(override?.otherPromotionCost ?? input.costs.otherPromotionCost),
   };
 }
@@ -630,7 +624,6 @@ function applyScenario(input: SimulationInput, scenario: ScenarioAdjustment): Si
     monthlyPlans: Array.from({ length: months }, (_, index) => {
       const month = resolveMonthlyPlan(input, Math.min(index + 1, input.product.plannedMonths));
       return {
-        ...month,
         month: index + 1,
         listPrice: month.listPrice * positive(scenario.priceMultiplier),
         orders: month.orders * positive(scenario.ordersMultiplier),
@@ -639,6 +632,7 @@ function applyScenario(input: SimulationInput, scenario: ScenarioAdjustment): Si
         acos: month.acos * positive(scenario.acosMultiplier),
         adSpend: month.adSpend * positive(scenario.acosMultiplier),
         returnRate: clampRate(month.returnRate * positive(scenario.returnRateMultiplier)),
+        otherPromotionCost: month.otherPromotionCost,
       };
     }),
   };

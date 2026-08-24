@@ -71,6 +71,17 @@ describe("profit simulation engine", () => {
     expect(resolveMonthlyPlan(input, 4).orders).toBe(1000);
   });
 
+  it("always reads FBA, product and logistics costs from base parameters", () => {
+    const monthOne = resolveMonthlyPlan(input, 1);
+    const monthSix = resolveMonthlyPlan(input, 6);
+    expect(monthOne.fbaFee).toBe(input.costs.fbaFee);
+    expect(monthSix.fbaFee).toBe(input.costs.fbaFee);
+    expect(monthOne.productCostPerUnit).toBe(input.costs.productCost + input.costs.packagingCost);
+    expect(monthSix.productCostPerUnit).toBe(monthOne.productCostPerUnit);
+    expect(monthOne.logisticsCostPerUnit).toBe(input.costs.firstMileCost);
+    expect(monthSix.logisticsCostPerUnit).toBe(monthOne.logisticsCostPerUnit);
+  });
+
   it("does not deduct Coupon twice from profit", () => {
     const plan = resolveMonthlyPlan(input, 4);
     const result = calculateMonthEconomics(input, plan);
