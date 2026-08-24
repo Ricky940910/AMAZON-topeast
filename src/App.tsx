@@ -18,6 +18,7 @@ import {
   Scale,
   Sparkles,
   Star,
+  TrendingUp,
   Warehouse,
 } from "lucide-react";
 import {
@@ -34,6 +35,7 @@ import InventoryCostSimulator from "./InventoryCostSimulator";
 import ProfitSimulator from "./ProfitSimulator";
 import FirstMileCalculator, { type FirstMileTransfer } from "./FirstMileCalculator";
 import ReviewScoreCalculator from "./ReviewScoreCalculator";
+import ProfitDecisionDesk from "./ProfitDecisionDesk";
 import { numberInputValue } from "./lib/input";
 
 const DEFAULT_INPUT: FbaInput = {
@@ -72,7 +74,7 @@ function positiveNumber(value: string): number {
 }
 
 function App() {
-  const [activeModule, setActiveModule] = useState<"fba" | "packing" | "inventory" | "profit" | "first-mile" | "review-score">("profit");
+  const [activeModule, setActiveModule] = useState<"fba" | "packing" | "inventory" | "profit" | "first-mile" | "review-score" | "simulation">("simulation");
   const [firstMileTransfer, setFirstMileTransfer] = useState<FirstMileTransfer | null>(null);
   const [input, setInput] = useState(DEFAULT_INPUT);
   const [copied, setCopied] = useState(false);
@@ -152,6 +154,11 @@ function App() {
           <button className={`nav-item ${activeModule === "review-score" ? "active" : ""}`} type="button" onClick={() => setActiveModule("review-score")}>
             <Star size={18} />
             <span><b>链接评分计算</b><small>Review 与 Rating</small></span>
+            <ChevronRight size={16} />
+          </button>
+          <button className={`nav-item ${activeModule === "simulation" ? "active" : ""}`} type="button" onClick={() => setActiveModule("simulation")}>
+            <TrendingUp size={18} />
+            <span><b>推演</b><small>利润、推广与回本决策</small></span>
             <ChevronRight size={16} />
           </button>
         </nav>
@@ -359,6 +366,7 @@ function App() {
       <div className="module-screen" hidden={activeModule !== "profit"}><ProfitSimulator firstMileTransfer={firstMileTransfer} onFirstMileTransferApplied={() => setFirstMileTransfer(null)} /></div>
       <div className="module-screen" hidden={activeModule !== "first-mile"}><FirstMileCalculator onTransferToProfit={(transfer) => { setFirstMileTransfer(transfer); setActiveModule("profit"); }} /></div>
       <div className="module-screen" hidden={activeModule !== "review-score"}><ReviewScoreCalculator /></div>
+      <div className="module-screen" hidden={activeModule !== "simulation"}><ProfitDecisionDesk /></div>
     </div>
   );
 }
