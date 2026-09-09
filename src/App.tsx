@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   Archive,
   Box,
+  Boxes,
   Calculator,
   Check,
   ChevronRight,
@@ -36,6 +37,7 @@ import ProfitSimulator from "./ProfitSimulator";
 import FirstMileCalculator, { type FirstMileTransfer } from "./FirstMileCalculator";
 import ReviewScoreCalculator from "./ReviewScoreCalculator";
 import ProfitDecisionDesk from "./ProfitDecisionDesk";
+import CargoDeclarationCalculator from "./CargoDeclarationCalculator";
 import { numberInputValue } from "./lib/input";
 
 const DEFAULT_INPUT: FbaInput = {
@@ -74,7 +76,7 @@ function positiveNumber(value: string): number {
 }
 
 function App() {
-  const [activeModule, setActiveModule] = useState<"fba" | "packing" | "inventory" | "profit" | "first-mile" | "review-score" | "simulation">("simulation");
+  const [activeModule, setActiveModule] = useState<"fba" | "packing" | "inventory" | "profit" | "first-mile" | "review-score" | "simulation" | "cargo-declaration">("simulation");
   const [firstMileTransfer, setFirstMileTransfer] = useState<FirstMileTransfer | null>(null);
   const [input, setInput] = useState(DEFAULT_INPUT);
   const [copied, setCopied] = useState(false);
@@ -159,6 +161,11 @@ function App() {
           <button className={`nav-item ${activeModule === "simulation" ? "active" : ""}`} type="button" onClick={() => setActiveModule("simulation")}>
             <TrendingUp size={18} />
             <span><b>推演</b><small>利润、推广与回本决策</small></span>
+            <ChevronRight size={16} />
+          </button>
+          <button className={`nav-item ${activeModule === "cargo-declaration" ? "active" : ""}`} type="button" onClick={() => setActiveModule("cargo-declaration")}>
+            <Boxes size={18} />
+            <span><b>货物申报金额</b><small>40HQ 装箱与申报</small></span>
             <ChevronRight size={16} />
           </button>
         </nav>
@@ -367,6 +374,7 @@ function App() {
       <div className="module-screen" hidden={activeModule !== "first-mile"}><FirstMileCalculator onTransferToProfit={(transfer) => { setFirstMileTransfer(transfer); setActiveModule("profit"); }} /></div>
       <div className="module-screen" hidden={activeModule !== "review-score"}><ReviewScoreCalculator /></div>
       <div className="module-screen" hidden={activeModule !== "simulation"}><ProfitDecisionDesk /></div>
+      <div className="module-screen" hidden={activeModule !== "cargo-declaration"}><CargoDeclarationCalculator /></div>
     </div>
   );
 }
