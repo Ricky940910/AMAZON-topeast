@@ -7,7 +7,6 @@ import {
   Calculator,
   Check,
   ChevronRight,
-  Clock3,
   CircleDollarSign,
   Copy,
   ExternalLink,
@@ -39,7 +38,6 @@ import FirstMileCalculator, { type FirstMileTransfer } from "./FirstMileCalculat
 import ReviewScoreCalculator from "./ReviewScoreCalculator";
 import ProfitDecisionDesk from "./ProfitDecisionDesk";
 import CargoDeclarationCalculator from "./CargoDeclarationCalculator";
-import HourlyAdsAnalysis from "./HourlyAdsAnalysis";
 import { numberInputValue } from "./lib/input";
 
 const DEFAULT_INPUT: FbaInput = {
@@ -78,7 +76,7 @@ function positiveNumber(value: string): number {
 }
 
 function App() {
-  const [activeModule, setActiveModule] = useState<"fba" | "packing" | "inventory" | "profit" | "first-mile" | "review-score" | "simulation" | "cargo-declaration" | "hourly-ads">("simulation");
+  const [activeModule, setActiveModule] = useState<"fba" | "packing" | "inventory" | "profit" | "first-mile" | "review-score" | "simulation" | "cargo-declaration">("simulation");
   const [firstMileTransfer, setFirstMileTransfer] = useState<FirstMileTransfer | null>(null);
   const [input, setInput] = useState(DEFAULT_INPUT);
   const [copied, setCopied] = useState(false);
@@ -168,11 +166,6 @@ function App() {
           <button className={`nav-item ${activeModule === "cargo-declaration" ? "active" : ""}`} type="button" onClick={() => setActiveModule("cargo-declaration")}>
             <Boxes size={18} />
             <span><b>货物申报金额</b><small>40HQ 装箱与申报</small></span>
-            <ChevronRight size={16} />
-          </button>
-          <button className={`nav-item ${activeModule === "hourly-ads" ? "active" : ""}`} type="button" onClick={() => setActiveModule("hourly-ads")}>
-            <Clock3 size={18} />
-            <span><b>广告分时分析</b><small>报表上传与时段决策</small></span>
             <ChevronRight size={16} />
           </button>
         </nav>
@@ -382,7 +375,6 @@ function App() {
       <div className="module-screen" hidden={activeModule !== "review-score"}><ReviewScoreCalculator /></div>
       <div className="module-screen" hidden={activeModule !== "simulation"}><ProfitDecisionDesk /></div>
       <div className="module-screen" hidden={activeModule !== "cargo-declaration"}><CargoDeclarationCalculator /></div>
-      <div className="module-screen" hidden={activeModule !== "hourly-ads"}><HourlyAdsAnalysis /></div>
     </div>
   );
 }

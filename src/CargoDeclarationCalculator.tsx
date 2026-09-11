@@ -15,6 +15,7 @@ const DEFAULT_INPUT: CargoDeclarationInput = {
   boxHeight: 0,
   dimensionUnit: "cm",
   unitsPerCarton: 0,
+  declarationBase: 0,
 };
 
 function positiveNumber(value: string): number {
@@ -31,7 +32,7 @@ function CargoDeclarationCalculator() {
   const [copied, setCopied] = useState(false);
   const result = useMemo(() => calculateCargoDeclaration(input), [input]);
 
-  const updateNumber = (key: "boxLength" | "boxWidth" | "boxHeight" | "unitsPerCarton", value: string) => {
+  const updateNumber = (key: "boxLength" | "boxWidth" | "boxHeight" | "unitsPerCarton" | "declarationBase", value: string) => {
     setInput((current) => ({ ...current, [key]: positiveNumber(value) }));
   };
 
@@ -46,8 +47,8 @@ function CargoDeclarationCalculator() {
       `40HQ 装箱数：${result.cartonsPerContainer} 箱`,
       `摆放方式：${best?.placementLabel ?? "未计算"}`,
       `柜装产品数量：${result.productsPerContainer} 件`,
-      `申报基数：${formatNumber(result.declarationBase)}`,
-      `单个产品申报金额：${formatNumber(result.declarationPerProduct)}`,
+      `申报基数：${result.declarationBase > 0 ? formatNumber(result.declarationBase) : "未填写"}`,
+      `单个产品申报金额：${result.declarationPerProduct > 0 ? formatNumber(result.declarationPerProduct) : "未计算"}`,
     ].join("\n");
     await navigator.clipboard.writeText(text);
     setCopied(true);
@@ -85,14 +86,14 @@ function CargoDeclarationCalculator() {
         <section className="cargo-hero">
           <div className="cargo-hero-title">
             <span>单个产品申报金额</span>
-            <strong>{formatNumber(result.declarationPerProduct)}</strong>
-            <p>按 7,856 ÷ 40HQ 柜装产品数量计算</p>
+            <strong>{result.declarationPerProduct > 0 ? formatNumber(result.declarationPerProduct) : "—"}</strong>
+            <p>按手动填写的整柜申报基数 ÷ 40HQ 柜装产品数量计算</p>
           </div>
           <div className="cargo-hero-stats">
             <div><small>40HQ 装箱数</small><b>{formatNumber(result.cartonsPerContainer, 0)} 箱</b></div>
             <div><small>每箱产品数量</small><b>{formatNumber(Math.floor(input.unitsPerCarton), 0)} 件</b></div>
             <div><small>柜装产品数量</small><b>{formatNumber(result.productsPerContainer, 0)} 件</b></div>
-            <div><small>申报基数</small><b>{formatNumber(result.declarationBase, 0)}</b></div>
+            <div><small>申报基数</small><b>{result.declarationBase > 0 ? formatNumber(result.declarationBase, 2) : "—"}</b></div>
           </div>
           <div className="cargo-hero-icon"><Ship size={58} strokeWidth={1.35} /><Box size={27} strokeWidth={1.4} /></div>
         </section>
@@ -105,6 +106,7 @@ function CargoDeclarationCalculator() {
               <div className="cargo-dimension-grid">{dimensionField("长", "boxLength")}{dimensionField("宽", "boxWidth")}{dimensionField("高", "boxHeight")}</div>
               <label className="cargo-field"><span>尺寸单位</span><select value={input.dimensionUnit} onChange={(event) => setInput((current) => ({ ...current, dimensionUnit: event.target.value as CargoDimensionUnit }))}><option value="cm">cm</option><option value="in">inch</option></select></label>
               <label className="cargo-field"><span>每箱装产品数量</span><NumberInput min="0" step="1" value={input.unitsPerCarton} placeholder="请输入" onRawChange={(value) => updateNumber("unitsPerCarton", value)} /></label>
+              <label className="cargo-field"><span>整柜申报基数</span><NumberInput min="0" step="0.01" value={input.declarationBase} placeholder="请输入" onRawChange={(value) => updateNumber("declarationBase", value)} /></label>
             </div>
             <div className="cargo-reference"><Info size={15} /><div><b>40HQ 标准内尺寸参考</b><span>1203 × 235 × 269 cm · 约 47.36 × 92.52 × 105.91 inch</span></div></div>
           </section>
@@ -122,9 +124,9 @@ function CargoDeclarationCalculator() {
             </article>
 
             <article className="cargo-card">
-              <div className="cargo-card-heading"><div><span>02</span><div><h2>单个产品申报金额</h2><p>按当前业务口径，以 7,856 作为整柜申报金额</p></div></div><Sparkles size={17} /></div>
-              <div className="cargo-declaration-flow"><div><small>整柜申报基数</small><strong>7,856.00</strong></div><b>÷</b><div><small>柜装产品数量</small><strong>{formatNumber(result.productsPerContainer, 0)} 件</strong></div><b>=</b><div className="cargo-declaration-total"><small>单个产品申报金额</small><strong>{formatNumber(result.declarationPerProduct)}</strong></div></div>
-              <p className="cargo-note">计算公式：7,856 ÷（40HQ 装箱数 × 每箱装产品数量）</p>
+              <div className="cargo-card-heading"><div><span>02</span><div><h2>单个产品申报金额</h2><p>整柜申报基数由你手动填写，避免固定业务口径限制</p></div></div><Sparkles size={17} /></div>
+              <div className="cargo-declaration-flow"><div><small>整柜申报基数</small><strong>{result.declarationBase > 0 ? formatNumber(result.declarationBase) : "—"}</strong></div><b>÷</b><div><small>柜装产品数量</small><strong>{formatNumber(result.productsPerContainer, 0)} 件</strong></div><b>=</b><div className="cargo-declaration-total"><small>单个产品申报金额</small><strong>{result.declarationPerProduct > 0 ? formatNumber(result.declarationPerProduct) : "—"}</strong></div></div>
+              <p className="cargo-note">计算公式：整柜申报基数 ÷（40HQ 装箱数 × 每箱装产品数量）</p>
             </article>
 
             <article className="cargo-card cargo-orientation-card">

@@ -29,8 +29,6 @@
 - 保守/正常/激进三种利润情景模拟和 SKU 运营评级
 - 利润驾驶舱、结果复制、Excel/CSV 导出与打印
 - 40HQ 六方向整齐装箱比较、箱装产品数量与申报金额计算
-- 板块九：广告分时分析数据源中心（官方报表下载路径、上传文件/文件夹、CSV/XLSX/XLS/JSON 字段识别）
-- 广告报表按日级与小时级分层，明确 Marketing Stream 是真正小时分析数据源
 
 ## 本地运行
 
@@ -52,31 +50,5 @@ pnpm dev
 - [Amazon UK selling and referral fees](https://sell.amazon.co.uk/pricing)
 - [Amazon Germany selling and referral fees](https://sell.amazon.de/preisgestaltung)
 - [Amazon Japan selling and referral fees](https://sell.amazon.co.jp/pricing)
-
-## 广告分时分析数据源
-
-广告分时分析入口会展示下载路径和文件检测状态。V1 只在浏览器本地解析用户主动选择的文件，不上传第三方服务器。
-
-### 真正的小时级数据
-
-- Amazon Marketing Stream：通过 Amazon Ads API 获取小时级事件数据，再上传 CSV 或 JSON
-- 官方文档：[Marketing Stream](https://advertising.amazon.com/API/docs/en-us/marketing-stream)
-
-### Seller Central 日级补充报表
-
-从 Seller Central 进入：`广告 → 广告活动管理 → 衡量与报告 → Sponsored ads reports`，按需下载：
-
-- Sponsored Products Campaign Report
-- Sponsored Products Search Term Report
-- Sponsored Products Placement Report
-- Sponsored Products Advertised Product Report
-
-这些常规报表通常是日级汇总，不能直接替代小时数据。广告报表 API 文档：[Reporting API 3.0](https://advertising.amazon.com/API/docs/en-us/reporting/3-0/openapi)
-
-### 经营数据补充
-
-从 Seller Central 进入：`报告 → 业务报告 → 按子商品查看详情页面销售量和流量`，下载 Detail Page Sales and Traffic by Child Item，用于辅助判断总流量与广告依赖度。
-
-上传支持：CSV、XLSX、XLS、Marketing Stream JSON；支持多文件和本地文件夹选择。浏览器安全限制下，页面只能显示“当前会话上传文件区”或用户选择的文件夹名称，不能读取任意本地绝对路径。
 
 本工具用于运营预估。Amazon 实际账单以 Seller Central 的产品测量数据和计费结果为准。

@@ -9,11 +9,13 @@ describe("cargo declaration calculator", () => {
       boxHeight: 40,
       dimensionUnit: "cm",
       unitsPerCarton: 10,
+      declarationBase: 10000,
     });
 
     expect(result.cartonsPerContainer).toBe(600);
     expect(result.productsPerContainer).toBe(6000);
-    expect(result.declarationPerProduct).toBeCloseTo(7856 / 6000, 8);
+    expect(result.declarationBase).toBe(10000);
+    expect(result.declarationPerProduct).toBeCloseTo(10000 / 6000, 8);
     expect(result.bestOrientation?.placementLabel).toContain("→柜长");
   });
 
@@ -24,6 +26,7 @@ describe("cargo declaration calculator", () => {
       boxHeight: 15.75,
       dimensionUnit: "in",
       unitsPerCarton: 10,
+      declarationBase: 7856,
     });
 
     expect(result.boxDimensionsCm[0]).toBeCloseTo(60.0, 1);
@@ -37,11 +40,13 @@ describe("cargo declaration calculator", () => {
       boxHeight: 0,
       dimensionUnit: "cm",
       unitsPerCarton: 0,
+      declarationBase: 0,
     });
 
     expect(result.valid).toBe(false);
     expect(result.cartonsPerContainer).toBe(0);
     expect(result.productsPerContainer).toBe(0);
     expect(result.declarationPerProduct).toBe(0);
+    expect(result.warnings).toContain("请填写大于 0 的整柜申报基数，系统才能计算单个产品申报金额。");
   });
 });

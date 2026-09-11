@@ -6,6 +6,7 @@ export interface CargoDeclarationInput {
   boxHeight: number;
   dimensionUnit: CargoDimensionUnit;
   unitsPerCarton: number;
+  declarationBase: number;
 }
 
 export interface CargoOrientation {
@@ -34,8 +35,6 @@ export interface CargoDeclarationResult {
 
 // Standard 40HQ internal reference size. Actual usable space varies by carrier and loading plan.
 export const FORTY_HQ_INTERNAL_CM: [number, number, number] = [1203, 235, 269];
-export const DECLARATION_BASE_AMOUNT = 7856;
-
 const DIMENSION_LABELS = ["箱长", "箱宽", "箱高"] as const;
 const PERMUTATIONS: Array<[number, number, number]> = [
   [0, 1, 2],
@@ -75,6 +74,7 @@ export function calculateCargoDeclaration(input: CargoDeclarationInput): CargoDe
     convertToCm(positive(input.boxHeight), input.dimensionUnit),
   ];
   const unitsPerCarton = Math.floor(positive(input.unitsPerCarton));
+  const declarationBase = positive(input.declarationBase);
   const valid = sourceDimensionsCm.every((value) => value > 0) && unitsPerCarton > 0;
   const allOrientations: CargoOrientation[] = [];
 
@@ -111,6 +111,7 @@ export function calculateCargoDeclaration(input: CargoDeclarationInput): CargoDe
   if (!valid) warnings.push("请填写大于 0 的箱长、箱宽、箱高和每箱产品数量。");
   if (valid && cartonsPerContainer === 0) warnings.push("当前纸箱尺寸无法放入标准 40HQ 内部尺寸，请检查单位或箱规。");
   if (valid && bestOrientation && bestOrientation.axisCounts.some((count) => count === 0)) warnings.push("当前箱规至少有一个方向超过 40HQ 内部尺寸。");
+  if (declarationBase <= 0) warnings.push("请填写大于 0 的整柜申报基数，系统才能计算单个产品申报金额。");
   warnings.push("装箱数量为按 40HQ 内尺寸进行的规则整齐排布理论值，实际装柜需预留托盘、加固、门框和装卸空间。");
 
   return {
@@ -122,8 +123,8 @@ export function calculateCargoDeclaration(input: CargoDeclarationInput): CargoDe
     allOrientations,
     cartonsPerContainer,
     productsPerContainer,
-    declarationBase: DECLARATION_BASE_AMOUNT,
-    declarationPerProduct: productsPerContainer > 0 ? DECLARATION_BASE_AMOUNT / productsPerContainer : 0,
+    declarationBase,
+    declarationPerProduct: productsPerContainer > 0 && declarationBase > 0 ? declarationBase / productsPerContainer : 0,
     warnings,
   };
 }
