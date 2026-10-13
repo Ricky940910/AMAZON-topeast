@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import {
   AlertTriangle,
   Archive,
+  BadgeDollarSign,
   Box,
   Boxes,
   Calculator,
@@ -40,6 +41,7 @@ import ReviewScoreCalculator from "./ReviewScoreCalculator";
 import ProfitDecisionDesk from "./ProfitDecisionDesk";
 import CargoDeclarationCalculator from "./CargoDeclarationCalculator";
 import HourlyAdsAnalysis from "./HourlyAdsAnalysis";
+import AdvertisingEstimator from "./AdvertisingEstimator";
 import { numberInputValue } from "./lib/input";
 
 const DEFAULT_INPUT: FbaInput = {
@@ -78,7 +80,7 @@ function positiveNumber(value: string): number {
 }
 
 function App() {
-  const [activeModule, setActiveModule] = useState<"fba" | "packing" | "inventory" | "profit" | "first-mile" | "review-score" | "simulation" | "cargo-declaration" | "hourly-ads">("simulation");
+  const [activeModule, setActiveModule] = useState<"fba" | "packing" | "inventory" | "profit" | "first-mile" | "review-score" | "simulation" | "cargo-declaration" | "hourly-ads" | "advertising-estimator">("simulation");
   const [firstMileTransfer, setFirstMileTransfer] = useState<FirstMileTransfer | null>(null);
   const [input, setInput] = useState(DEFAULT_INPUT);
   const [copied, setCopied] = useState(false);
@@ -173,6 +175,11 @@ function App() {
           <button className={`nav-item ${activeModule === "hourly-ads" ? "active" : ""}`} type="button" onClick={() => setActiveModule("hourly-ads")}>
             <Clock3 size={18} />
             <span><b>广告分时分析</b><small>报表上传与时段决策</small></span>
+            <ChevronRight size={16} />
+          </button>
+          <button className={`nav-item ${activeModule === "advertising-estimator" ? "active" : ""}`} type="button" onClick={() => setActiveModule("advertising-estimator")}>
+            <BadgeDollarSign size={18} />
+            <span><b>广告测算</b><small>竞品花费、CPC 与订单占比</small></span>
             <ChevronRight size={16} />
           </button>
         </nav>
@@ -383,6 +390,7 @@ function App() {
       <div className="module-screen" hidden={activeModule !== "simulation"}><ProfitDecisionDesk /></div>
       <div className="module-screen" hidden={activeModule !== "cargo-declaration"}><CargoDeclarationCalculator /></div>
       <div className="module-screen" hidden={activeModule !== "hourly-ads"}><HourlyAdsAnalysis /></div>
+      <div className="module-screen" hidden={activeModule !== "advertising-estimator"}><AdvertisingEstimator /></div>
     </div>
   );
 }
